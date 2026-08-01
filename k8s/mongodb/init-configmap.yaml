@@ -1,0 +1,169 @@
+apiVersion: v1
+data:
+  init-mongo.js: "// Idempotent seed data for the sports-store demo (fictional Stryda
+    brand).\r\n// Runs automatically via /docker-entrypoint-initdb.d on first mongo
+    init\r\n// (only when /data/db is empty).\r\n\r\nconst now = new Date();\r\n\r\nconst
+    PRODUCT_IMAGES = {\r\n  \"velocity-runner\": \"https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=1200&q=85\",\r\n
+    \ \"velocity-runner-w\": \"https://images.unsplash.com/photo-1496579538151-212636d0b01c?auto=format&fit=crop&w=1200&q=85\",\r\n
+    \ \"court-master-pro\": \"https://images.unsplash.com/photo-1558004282-e2b2587e3e47?auto=format&fit=crop&w=1200&q=85\",\r\n
+    \ \"trailblazer-gtx\": \"https://images.unsplash.com/photo-1460353581641-37baddab0fa2?auto=format&fit=crop&w=1200&q=85\",\r\n
+    \ \"sprint-lite\": \"https://images.unsplash.com/photo-1600185365483-26d7a4cc7519?auto=format&fit=crop&w=1200&q=85\",\r\n
+    \ \"stryda-team-hoodie\": \"https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=1200&q=85\",\r\n
+    \ \"flex-training-tee\": \"https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=1200&q=85\",\r\n
+    \ \"aero-running-shorts\": \"https://images.unsplash.com/photo-1554139844-af2fc8ad3a3a?auto=format&fit=crop&w=1200&q=85\",\r\n
+    \ \"endurance-crew-socks\": \"https://images.unsplash.com/photo-1597843797221-e34b4a320b97?auto=format&fit=crop&w=1200&q=85\",\r\n
+    \ \"pro-gym-duffel\": \"https://images.unsplash.com/photo-1708622833152-924c6e364138?auto=format&fit=crop&w=1200&q=85\",\r\n
+    \ \"apex-cross-trainer\": \"https://images.unsplash.com/photo-1539185441755-769473a23570?auto=format&fit=crop&w=1200&q=85\",\r\n
+    \ \"cloudstrike-runner\": \"https://images.unsplash.com/photo-1549298916-b41d501d3772?auto=format&fit=crop&w=1200&q=85\",\r\n
+    \ \"pivot-low\": \"https://images.unsplash.com/photo-1552346154-21d32810aba3?auto=format&fit=crop&w=1200&q=85\",\r\n
+    \ \"core-zip-hoodie\": \"https://images.unsplash.com/photo-1556821840-3a63f95609a7?auto=format&fit=crop&w=1200&q=85\",\r\n
+    \ \"motion-support-bra\": \"https://images.unsplash.com/photo-1538805060514-97d9cc17730c?auto=format&fit=crop&w=1200&q=85\",\r\n
+    \ \"tempo-7-8-leggings\": \"https://images.unsplash.com/photo-1538805060514-97d9cc17730c?auto=format&fit=crop&w=1200&q=85\",\r\n
+    \ \"everyday-recovery-joggers\": \"https://images.unsplash.com/photo-1506629082955-511b1aa562c8?auto=format&fit=crop&w=1200&q=85\",\r\n
+    \ \"grip-training-gloves\": \"https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?auto=format&fit=crop&w=1200&q=85\",\r\n
+    \ \"steel-flow-bottle\": \"https://images.unsplash.com/photo-1602143407151-7111542de6e8?auto=format&fit=crop&w=1200&q=85\",\r\n
+    \ \"restore-foam-roller\": \"https://images.unsplash.com/photo-1599058917212-d750089bc07e?auto=format&fit=crop&w=1200&q=85\",\r\n};\r\n\r\nconst
+    CATEGORY_FEATURES = {\r\n  \"running-shoes\": [\"Responsive foam cushioning\",
+    \"Breathable engineered upper\", \"High-traction rubber outsole\"],\r\n  \"basketball-shoes\":
+    [\"Court-gripping multidirectional tread\", \"Reinforced lateral support\", \"Impact-absorbing
+    heel cushioning\"],\r\n  \"training-shoes\": [\"Stable platform for lifting\",
+    \"Flexible forefoot for agility\", \"Abrasion-resistant upper\"],\r\n  \"hoodies\":
+    [\"Soft heavyweight performance fleece\", \"Relaxed athletic fit\", \"Machine
+    washable construction\"],\r\n  \"sportswear\": [\"Sweat-wicking technical fabric\",
+    \"Four-way stretch\", \"Flat seams reduce distraction\"],\r\n  \"accessories\":
+    [\"Built for daily training\", \"Durable easy-care materials\", \"Designed to
+    travel\"],\r\n};\r\n\r\nfunction product(name, slug, description, category, gender,
+    basePrice, tags, variants) {\r\n  return {\r\n    name, slug, description,\r\n
+    \   brand: \"Stryda\",\r\n    category, gender, tags,\r\n    image_url: PRODUCT_IMAGES[slug]
+    || \"\",\r\n    rating: Number((4.5 + (slug.length % 5) * 0.1).toFixed(1)),\r\n
+    \   review_count: 18 + slug.length * 7,\r\n    features: CATEGORY_FEATURES[category]
+    || CATEGORY_FEATURES.accessories,\r\n    base_price: basePrice,\r\n    variants,\r\n
+    \   is_active: true,\r\n    created_at: now,\r\n  };\r\n}\r\n\r\nfunction variant(sku,
+    color, size, price, stock) {\r\n  return { sku, color, size, price, stock_quantity:
+    stock };\r\n}\r\n\r\nconst products = [\r\n  product(\r\n    \"Velocity Runner\",
+    \"velocity-runner\",\r\n    \"A lightweight everyday road shoe with responsive
+    cushioning, breathable support and a smooth transition for daily miles or weekend
+    tempo sessions.\",\r\n    \"running-shoes\", \"men\", 129.99, [\"running\", \"lightweight\",
+    \"new\"],\r\n    [\r\n      variant(\"VR-BLK-42\", \"Black\", \"42\", 129.99,
+    15),\r\n      variant(\"VR-BLK-43\", \"Black\", \"43\", 129.99, 12),\r\n      variant(\"VR-WHT-42\",
+    \"White\", \"42\", 134.99, 8),\r\n      variant(\"VR-WHT-44\", \"White\", \"44\",
+    134.99, 5),\r\n    ],\r\n  ),\r\n  product(\r\n    \"Velocity Runner W\", \"velocity-runner-w\",\r\n
+    \   \"The women's Velocity pairs a secure, lower-volume fit with soft responsive
+    foam for comfortable everyday runs, walks and busy training weeks.\",\r\n    \"running-shoes\",
+    \"women\", 129.99, [\"running\", \"lightweight\"],\r\n    [\r\n      variant(\"VRW-PNK-38\",
+    \"Pink\", \"38\", 129.99, 10),\r\n      variant(\"VRW-BLK-39\", \"Black\", \"39\",
+    129.99, 14),\r\n    ],\r\n  ),\r\n  product(\r\n    \"Court Master Pro\", \"court-master-pro\",\r\n
+    \   \"A supportive high-top basketball shoe built for explosive first steps, confident
+    landings and controlled cuts through every quarter.\",\r\n    \"basketball-shoes\",
+    \"men\", 149.99, [\"basketball\", \"pro\"],\r\n    [\r\n      variant(\"CM-WHT-43\",
+    \"White\", \"43\", 149.99, 10),\r\n      variant(\"CM-RED-44\", \"Red\", \"44\",
+    154.99, 7),\r\n      variant(\"CM-BLK-45\", \"Black\", \"45\", 149.99, 9),\r\n
+    \   ],\r\n  ),\r\n  product(\r\n    \"Trailblazer GTX\", \"trailblazer-gtx\",\r\n
+    \   \"A waterproof trail runner with protective overlays and aggressive all-terrain
+    grip for wet climbs, loose descents and unpredictable weather.\",\r\n    \"running-shoes\",
+    \"unisex\", 159.99, [\"trail\", \"waterproof\"],\r\n    [\r\n      variant(\"TB-GRN-41\",
+    \"Green\", \"41\", 159.99, 6),\r\n      variant(\"TB-GRY-42\", \"Grey\", \"42\",
+    159.99, 11),\r\n    ],\r\n  ),\r\n  product(\r\n    \"Sprint Lite\", \"sprint-lite\",\r\n
+    \   \"A stripped-back racing flat with energetic foam and a featherweight upper
+    for track repeats, fast tempo work and your next start line.\",\r\n    \"running-shoes\",
+    \"unisex\", 99.99, [\"running\", \"racing\"],\r\n    [\r\n      variant(\"SL-YLW-42\",
+    \"Yellow\", \"42\", 99.99, 20),\r\n      variant(\"SL-BLU-43\", \"Blue\", \"43\",
+    99.99, 18),\r\n    ],\r\n  ),\r\n  product(\r\n    \"Stryda Team Hoodie\", \"stryda-team-hoodie\",\r\n
+    \   \"A heavyweight brushed-fleece hoodie with a structured hood, relaxed athletic
+    cut and understated embroidery for warm-ups and recovery days.\",\r\n    \"hoodies\",
+    \"unisex\", 69.99, [\"casual\", \"fleece\"],\r\n    [\r\n      variant(\"TH-GRY-M\",
+    \"Grey\", \"M\", 69.99, 25),\r\n      variant(\"TH-GRY-L\", \"Grey\", \"L\", 69.99,
+    22),\r\n      variant(\"TH-BLK-M\", \"Black\", \"M\", 69.99, 16),\r\n    ],\r\n
+    \ ),\r\n  product(\r\n    \"Flex Training Tee\", \"flex-training-tee\",\r\n    \"A
+    breathable quick-dry training tee that moves sweat away from the skin and stays
+    comfortable through strength work, circuits and cooldowns.\",\r\n    \"sportswear\",
+    \"men\", 29.99, [\"training\", \"quick-dry\"],\r\n    [\r\n      variant(\"FT-WHT-M\",
+    \"White\", \"M\", 29.99, 40),\r\n      variant(\"FT-NVY-L\", \"Navy\", \"L\",
+    29.99, 35),\r\n    ],\r\n  ),\r\n  product(\r\n    \"Aero Running Shorts\", \"aero-running-shorts\",\r\n
+    \   \"Featherweight running shorts with a supportive built-in liner, secure key
+    pocket and side split for a natural, unrestricted stride.\",\r\n    \"sportswear\",
+    \"women\", 39.99, [\"running\", \"summer\"],\r\n    [\r\n      variant(\"AR-BLK-S\",
+    \"Black\", \"S\", 39.99, 30),\r\n      variant(\"AR-TEAL-M\", \"Teal\", \"M\",
+    39.99, 27),\r\n    ],\r\n  ),\r\n  product(\r\n    \"Endurance Crew Socks\", \"endurance-crew-socks\",\r\n
+    \   \"Three pairs of technical crew socks with targeted cushioning, breathable
+    mesh zones and arch support for training days and daily wear.\",\r\n    \"accessories\",
+    \"unisex\", 14.99, [\"socks\", \"3-pack\"],\r\n    [\r\n      variant(\"EC-WHT-ONE\",
+    \"White\", \"One Size\", 14.99, 60),\r\n      variant(\"EC-BLK-ONE\", \"Black\",
+    \"One Size\", 14.99, 55),\r\n    ],\r\n  ),\r\n  product(\r\n    \"Pro Gym Duffel\",
+    \"pro-gym-duffel\",\r\n    \"A water-resistant 40-litre training duffel with a
+    ventilated shoe compartment, padded shoulder strap and organized pockets for daily
+    essentials.\",\r\n    \"accessories\", \"unisex\", 59.99, [\"gym\", \"bag\"],\r\n
+    \   [\r\n      variant(\"GD-BLK-ONE\", \"Black\", \"One Size\", 59.99, 12),\r\n
+    \   ],\r\n  ),\r\n  product(\r\n    \"Apex Cross Trainer\", \"apex-cross-trainer\",\r\n
+    \   \"A stable, low-profile training shoe that transitions from heavy lifts to
+    fast conditioning intervals without missing a beat.\",\r\n    \"training-shoes\",
+    \"unisex\", 119.99, [\"training\", \"lifting\", \"new\"],\r\n    [variant(\"AX-BLK-41\",
+    \"Black\", \"41\", 119.99, 18), variant(\"AX-BLK-43\", \"Black\", \"43\", 119.99,
+    21), variant(\"AX-SND-42\", \"Sand\", \"42\", 124.99, 12)],\r\n  ),\r\n  product(\r\n
+    \   \"Cloudstrike Runner\", \"cloudstrike-runner\",\r\n    \"Maximum-cushion road
+    runner with a sculpted rocker that makes long recovery miles feel noticeably smoother.\",\r\n
+    \   \"running-shoes\", \"women\", 144.99, [\"running\", \"cushioned\", \"new\"],\r\n
+    \   [variant(\"CS-LIL-38\", \"Lilac\", \"38\", 144.99, 16), variant(\"CS-LIL-39\",
+    \"Lilac\", \"39\", 144.99, 14), variant(\"CS-WHT-40\", \"White\", \"40\", 149.99,
+    9)],\r\n  ),\r\n  product(\r\n    \"Pivot Low\", \"pivot-low\",\r\n    \"A quick,
+    responsive low-top made for guards who create space, change direction and play
+    at full speed.\",\r\n    \"basketball-shoes\", \"unisex\", 139.99, [\"basketball\",
+    \"court\", \"lightweight\"],\r\n    [variant(\"PV-BLU-42\", \"Royal Blue\", \"42\",
+    139.99, 11), variant(\"PV-BLU-44\", \"Royal Blue\", \"44\", 139.99, 8), variant(\"PV-CRM-43\",
+    \"Cream\", \"43\", 144.99, 10)],\r\n  ),\r\n  product(\r\n    \"Core Zip Hoodie\",
+    \"core-zip-hoodie\",\r\n    \"A clean full-zip layer with structured fleece, secure
+    pockets and enough stretch for warm-ups or the commute home.\",\r\n    \"hoodies\",
+    \"unisex\", 79.99, [\"fleece\", \"layering\", \"everyday\"],\r\n    [variant(\"CZ-OLV-M\",
+    \"Olive\", \"M\", 79.99, 20), variant(\"CZ-OLV-L\", \"Olive\", \"L\", 79.99, 17),
+    variant(\"CZ-BLK-XL\", \"Black\", \"XL\", 79.99, 13)],\r\n  ),\r\n  product(\r\n
+    \   \"Motion Support Bra\", \"motion-support-bra\",\r\n    \"Medium-support training
+    bra with a smooth underband and breathable racerback for running, circuits and
+    studio sessions.\",\r\n    \"sportswear\", \"women\", 44.99, [\"training\", \"support\",
+    \"quick-dry\"],\r\n    [variant(\"MSB-BLK-S\", \"Black\", \"S\", 44.99, 24), variant(\"MSB-BLK-M\",
+    \"Black\", \"M\", 44.99, 28), variant(\"MSB-BLU-L\", \"Ocean\", \"L\", 44.99,
+    16)],\r\n  ),\r\n  product(\r\n    \"Tempo 7/8 Leggings\", \"tempo-7-8-leggings\",\r\n
+    \   \"High-rise performance leggings with compressive stretch, a stay-put waistband
+    and a discreet phone pocket.\",\r\n    \"sportswear\", \"women\", 64.99, [\"running\",
+    \"training\", \"pockets\"],\r\n    [variant(\"TL-TEAL-S\", \"Teal\", \"S\", 64.99,
+    22), variant(\"TL-TEAL-M\", \"Teal\", \"M\", 64.99, 20), variant(\"TL-BLK-L\",
+    \"Black\", \"L\", 64.99, 25)],\r\n  ),\r\n  product(\r\n    \"Everyday Recovery
+    Joggers\", \"everyday-recovery-joggers\",\r\n    \"Tapered recovery pants in soft
+    double-knit fabric, designed for rest days, travel and low-intensity warm-ups.\",\r\n
+    \   \"sportswear\", \"men\", 59.99, [\"recovery\", \"casual\", \"travel\"],\r\n
+    \   [variant(\"ERJ-GRY-M\", \"Graphite\", \"M\", 59.99, 19), variant(\"ERJ-GRY-L\",
+    \"Graphite\", \"L\", 59.99, 23), variant(\"ERJ-NVY-XL\", \"Navy\", \"XL\", 59.99,
+    14)],\r\n  ),\r\n  product(\r\n    \"Grip Training Gloves\", \"grip-training-gloves\",\r\n
+    \   \"Low-bulk lifting gloves with a reinforced synthetic palm and breathable
+    mesh across the back of the hand.\",\r\n    \"accessories\", \"unisex\", 24.99,
+    [\"lifting\", \"grip\", \"gym\"],\r\n    [variant(\"GTG-BLK-S\", \"Black\", \"S\",
+    24.99, 31), variant(\"GTG-BLK-M\", \"Black\", \"M\", 24.99, 38), variant(\"GTG-BLK-L\",
+    \"Black\", \"L\", 24.99, 29)],\r\n  ),\r\n  product(\r\n    \"Steel Flow Bottle\",
+    \"steel-flow-bottle\",\r\n    \"A vacuum-insulated 750ml training bottle that
+    keeps water cold and slips securely into standard gym-bag pockets.\",\r\n    \"accessories\",
+    \"unisex\", 27.99, [\"hydration\", \"insulated\", \"bpa-free\"],\r\n    [variant(\"SFB-BLK-750\",
+    \"Black\", \"750ml\", 27.99, 45), variant(\"SFB-LIM-750\", \"Volt\", \"750ml\",
+    27.99, 32)],\r\n  ),\r\n  product(\r\n    \"Restore Foam Roller\", \"restore-foam-roller\",\r\n
+    \   \"A medium-density textured roller for post-training mobility, targeted release
+    and better recovery between sessions.\",\r\n    \"accessories\", \"unisex\", 34.99,
+    [\"recovery\", \"mobility\", \"home-gym\"],\r\n    [variant(\"RFR-BLK-ONE\", \"Black\",
+    \"One Size\", 34.99, 26), variant(\"RFR-BLU-ONE\", \"Blue\", \"One Size\", 34.99,
+    18)],\r\n  ),\r\n];\r\n\r\n// bcrypt hash of \"Admin1234!\" — precomputed since
+    mongosh has no bcrypt lib.\r\nconst ADMIN_USER = {\r\n  email: \"admin@stryda-sports.com\",\r\n
+    \ full_name: \"Store Admin\",\r\n  role: \"admin\",\r\n  password_hash: \"$2b$12$eWLYbyjFiQ8r8KswdIAp3ODYlksrypqkO1AolG33xBwSo3qZY350W\",\r\n};\r\n\r\nconst
+    catalogDb = db.getSiblingDB(\"catalog_db\");\r\nlet inserted = 0;\r\nfor (const
+    doc of products) {\r\n  const result = catalogDb.products.updateOne(\r\n    {
+    slug: doc.slug },\r\n    { $setOnInsert: doc },\r\n    { upsert: true },\r\n  );\r\n
+    \ catalogDb.products.updateOne(\r\n    { slug: doc.slug },\r\n    { $set: {\r\n
+    \     name: doc.name,\r\n      description: doc.description,\r\n      image_url:
+    doc.image_url,\r\n      rating: doc.rating,\r\n      review_count: doc.review_count,\r\n
+    \     features: doc.features,\r\n      tags: doc.tags,\r\n    } },\r\n  );\r\n
+    \ if (result.upsertedId) inserted++;\r\n}\r\nprint(`Seed complete: ${inserted}
+    new products inserted, ${catalogDb.products.countDocuments({})} total.`);\r\n\r\nconst
+    authDb = db.getSiblingDB(\"auth_db\");\r\nconst adminExists = authDb.users.findOne({
+    email: ADMIN_USER.email });\r\nif (!adminExists) {\r\n  authDb.users.insertOne({
+    ...ADMIN_USER, created_at: now });\r\n  print(`Admin user created: ${ADMIN_USER.email}`);\r\n}
+    else {\r\n  print(`Admin user already present: ${ADMIN_USER.email}`);\r\n}\r\n"
+kind: ConfigMap
+metadata:
+  name: mongo-init
+  namespace: sports-store
