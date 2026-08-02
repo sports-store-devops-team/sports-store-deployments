@@ -4,17 +4,18 @@ Raw Kubernetes manifests for the Sports Store application. Workloads run in the 
 
 ## Local Minikube setup
 
-The helper scripts resolve every sibling repository relative to their own location, so they can be run from any working directory. Start Minikube, copy the example secret environment file, and fill the copy with local-only values:
+The helper scripts resolve every sibling repository relative to their own location, so they can be run from any working directory. Start Minikube, then run:
 
 ```sh
-cp scripts/local-secrets.env.example scripts/local-secrets.env
+bash scripts/create-local-secrets.sh sports-store
 ```
 
-Never commit `scripts/local-secrets.env`. Keep `MONGO_ROOT_USERNAME=root` so it matches the Helm chart, and generate URL-safe development values as described in the example file. If `app-secrets` already exists, the helper refuses to rotate its MongoDB password because changing the Secret alone does not update an initialized MongoDB PVC. Prepare the namespace and Secret, then build and load all seven pinned application images:
+On first use, the helper generates a protected, Git-ignored `scripts/local-secrets.env`; later runs reuse it without replacing its values. Keep `MONGO_ROOT_USERNAME=root` so it matches the Helm chart. If `app-secrets` already exists, the helper refuses to rotate its MongoDB password because changing the Secret alone does not update an initialized MongoDB PVC.
+
+Build and load all seven pinned application images:
 
 ```sh
-./scripts/create-local-secrets.sh sports-store
-./scripts/build-load-minikube-images.sh
+bash scripts/build-load-minikube-images.sh
 ```
 
 The image script builds from the sibling application repositories and loads the exact chart tags into Minikube. The local Helm values use `imagePullPolicy: Never`, which is appropriate for those locally loaded images and is not an EKS deployment strategy.

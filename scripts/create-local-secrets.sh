@@ -14,8 +14,20 @@ for command_name in kubectl base64; do
 done
 
 if [[ ! -f "${ENV_FILE}" ]]; then
-  printf 'Error: %s does not exist. Copy local-secrets.env.example to local-secrets.env and fill in local development values.\n' "${ENV_FILE}" >&2
-  exit 1
+  if ! command -v openssl >/dev/null 2>&1; then
+    printf 'Error: required command not found: openssl (needed to create local-secrets.env).\n' >&2
+    exit 1
+  fi
+
+  umask 077
+  generated_mongo_password="$(openssl rand -hex 24)"
+  generated_jwt_secret="$(openssl rand -hex 32)"
+
+  printf 'MONGO_ROOT_USERNAME=root\nMONGO_ROOT_PASSWORD=%s\nJWT_SECRET=%s\n' \
+    "${generated_mongo_password}" "${generated_jwt_secret}" > "${ENV_FILE}"
+
+  unset generated_mongo_password generated_jwt_secret
+  printf 'Created protected local secret configuration at scripts/local-secrets.env.\n'
 fi
 
 if [[ ! "${NAMESPACE}" =~ ^[a-z0-9]([-a-z0-9]*[a-z0-9])?$ ]] || (( ${#NAMESPACE} > 63 )); then
