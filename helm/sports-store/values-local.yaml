@@ -1,0 +1,10 @@
+backendDefaults:
+  imagePullPolicy: Never
+
+frontend:
+  imagePullPolicy: Never
+
+gateway:
+  imagePullPolicy: Never
+  service:
+    type: NodePort
