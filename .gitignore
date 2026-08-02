@@ -3,3 +3,5 @@
 *.secret.yaml
 secrets.local/
 helm/*/charts/*.tgz
+scripts/local-secrets.env
+!scripts/local-secrets.env.example

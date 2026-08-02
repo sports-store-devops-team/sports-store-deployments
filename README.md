@@ -2,9 +2,33 @@
 
 Raw Kubernetes manifests for the Sports Store application. Workloads run in the `sports-store` namespace. The gateway is the only NodePort; frontend and backend Services are internal ClusterIP Services.
 
-## Local Minikube images
+## Local Minikube setup
 
-Build or load the pinned application images into Minikube before creating workloads: `sports-store/frontend:0.1.0`, `sports-store/gateway:0.2.0`, and each backend image at `0.1.0`. These local manifests use `imagePullPolicy: Never`, which is appropriate for locally loaded Minikube images and is not an EKS deployment strategy.
+The helper scripts resolve every sibling repository relative to their own location, so they can be run from any working directory. Start Minikube, copy the example secret environment file, and fill the copy with local-only values:
+
+```sh
+cp scripts/local-secrets.env.example scripts/local-secrets.env
+```
+
+Never commit `scripts/local-secrets.env`. Keep `MONGO_ROOT_USERNAME=root` so it matches the Helm chart, and generate URL-safe development values as described in the example file. If `app-secrets` already exists, the helper refuses to rotate its MongoDB password because changing the Secret alone does not update an initialized MongoDB PVC. Prepare the namespace and Secret, then build and load all seven pinned application images:
+
+```sh
+./scripts/create-local-secrets.sh sports-store
+./scripts/build-load-minikube-images.sh
+```
+
+The image script builds from the sibling application repositories and loads the exact chart tags into Minikube. The local Helm values use `imagePullPolicy: Never`, which is appropriate for those locally loaded images and is not an EKS deployment strategy.
+
+Validate and install the chart from its directory:
+
+```sh
+cd helm/sports-store
+helm dependency build
+helm lint . -f values-local.yaml
+helm upgrade --install sports-store . \
+  --namespace sports-store \
+  -f values-local.yaml
+```
 
 ## Safe application order
 
@@ -24,4 +48,4 @@ Access the site with:
 minikube service gateway -n sports-store
 ```
 
-The `k8s/` tree retains the raw resource-per-component layout. No application Helm chart is included.
+The `k8s/` tree retains the verified raw resource-per-component layout. The application Helm chart is under `helm/sports-store/`.
