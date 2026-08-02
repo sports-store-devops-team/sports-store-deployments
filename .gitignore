@@ -2,3 +2,4 @@
 *.local.yaml
 *.secret.yaml
 secrets.local/
+helm/*/charts/*.tgz
