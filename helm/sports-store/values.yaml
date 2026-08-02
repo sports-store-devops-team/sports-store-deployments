@@ -1,0 +1,203 @@
+nameOverride: ""
+fullnameOverride: ""
+existingSecret: app-secrets
+
+serviceAccount:
+  create: true
+  name: ""
+
+backendDefaults:
+  replicas: 1
+  imagePullPolicy: IfNotPresent
+  readinessProbe:
+    path: /health
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 6
+  livenessProbe:
+    path: /health
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+services:
+  auth:
+    enabled: true
+    name: auth-service
+    image:
+      repository: sports-store/auth-service
+      tag: 0.1.0
+    replicas: 1
+    port: 8001
+    mongoSecretKey: AUTH_MONGO_URI
+    config:
+      ACCESS_TOKEN_EXPIRE_MINUTES: "60"
+
+  catalog:
+    enabled: true
+    name: catalog-service
+    image:
+      repository: sports-store/catalog-service
+      tag: 0.1.0
+    replicas: 1
+    port: 8002
+    mongoSecretKey: CATALOG_MONGO_URI
+    config: {}
+
+  cart:
+    enabled: true
+    name: cart-service
+    image:
+      repository: sports-store/cart-service
+      tag: 0.1.0
+    replicas: 1
+    port: 8003
+    mongoSecretKey: CART_MONGO_URI
+    config:
+      CATALOG_URL: http://catalog-service:8002
+      HTTP_TIMEOUT_SECONDS: "5"
+
+  order:
+    enabled: true
+    name: order-service
+    image:
+      repository: sports-store/order-service
+      tag: 0.1.0
+    replicas: 1
+    port: 8004
+    mongoSecretKey: ORDER_MONGO_URI
+    config:
+      CART_URL: http://cart-service:8003
+      CATALOG_URL: http://catalog-service:8002
+      PAYMENT_URL: http://payment-service:8005
+      HTTP_TIMEOUT_SECONDS: "5"
+      SHIPPING_FLAT_RATE: "5.00"
+      FREE_SHIPPING_THRESHOLD: "100"
+
+  payment:
+    enabled: true
+    name: payment-service
+    image:
+      repository: sports-store/payment-service
+      tag: 0.1.0
+    replicas: 1
+    port: 8005
+    mongoSecretKey: PAYMENT_MONGO_URI
+    config:
+      PAYMENT_FAILURE_SUFFIX: "0000"
+
+frontend:
+  enabled: true
+  name: frontend
+  image:
+    repository: sports-store/frontend
+    tag: 0.1.0
+  imagePullPolicy: IfNotPresent
+  replicas: 1
+  port: 80
+  readinessProbe:
+    path: /
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 6
+  livenessProbe:
+    path: /
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+  service:
+    type: ClusterIP
+    port: 80
+
+gateway:
+  enabled: true
+  name: gateway
+  image:
+    repository: sports-store/gateway
+    tag: 0.2.0
+  imagePullPolicy: IfNotPresent
+  replicas: 1
+  port: 80
+  readinessProbe:
+    path: /health
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 2
+    failureThreshold: 6
+  livenessProbe:
+    path: /health
+    initialDelaySeconds: 15
+    periodSeconds: 10
+    timeoutSeconds: 2
+    failureThreshold: 3
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+  service:
+    type: ClusterIP
+    port: 80
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts: []
+  tls: []
+
+mongodb:
+  enabled: true
+  architecture: standalone
+  replicaCount: 1
+  fullnameOverride: sports-store-mongodb
+
+  image:
+    registry: registry-1.docker.io
+    repository: bitnami/mongodb
+    tag: ""
+    digest: sha256:6b25f1600ac5576d7ee45c0c76bc28dbb28a61ded80ebf75baaa226a431fe57d
+    pullPolicy: IfNotPresent
+
+  updateStrategy:
+    type: Recreate
+
+  auth:
+    enabled: true
+    rootUser: root
+    existingSecret: app-secrets
+
+  initdbScriptsConfigMap: mongo-init
+
+  persistence:
+    enabled: true
+    size: 1Gi
+    resourcePolicy: keep
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi

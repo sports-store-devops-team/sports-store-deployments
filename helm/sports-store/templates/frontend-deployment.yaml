@@ -1,0 +1,48 @@
+{{- if .Values.frontend.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  labels:
+    {{- include "sports-store.labels" . | nindent 4 }}
+    app.kubernetes.io/component: frontend
+spec:
+  replicas: {{ .Values.frontend.replicas }}
+  selector:
+    matchLabels:
+      {{- include "sports-store.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: frontend
+  template:
+    metadata:
+      labels:
+        {{- include "sports-store.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: frontend
+    spec:
+      serviceAccountName: {{ include "sports-store.serviceAccountName" . }}
+      containers:
+        - name: frontend
+          image: {{ printf "%s:%s" .Values.frontend.image.repository .Values.frontend.image.tag | quote }}
+          imagePullPolicy: {{ .Values.frontend.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.frontend.port }}
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.frontend.readinessProbe.path }}
+              port: {{ .Values.frontend.port }}
+            initialDelaySeconds: {{ .Values.frontend.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.frontend.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.frontend.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.frontend.readinessProbe.failureThreshold }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.frontend.livenessProbe.path }}
+              port: {{ .Values.frontend.port }}
+            initialDelaySeconds: {{ .Values.frontend.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.frontend.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.frontend.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ .Values.frontend.livenessProbe.failureThreshold }}
+          resources:
+            {{- toYaml .Values.frontend.resources | nindent 12 }}
+{{- end }}

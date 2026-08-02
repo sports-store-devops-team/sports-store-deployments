@@ -1,0 +1,27 @@
+{{- $root := . }}
+{{- $first := true }}
+{{- range $serviceKey, $service := .Values.services }}
+{{- if $service.enabled }}
+{{- if not $first }}
+---
+{{- end }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $service.name }}
+  labels:
+    {{- include "sports-store.labels" $root | nindent 4 }}
+    app.kubernetes.io/component: {{ $service.name }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "sports-store.selectorLabels" $root | nindent 4 }}
+    app.kubernetes.io/component: {{ $service.name }}
+  ports:
+    - name: http
+      protocol: TCP
+      port: {{ $service.port }}
+      targetPort: {{ $service.port }}
+{{- $first = false }}
+{{- end }}
+{{- end }}

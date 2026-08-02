@@ -1,0 +1,72 @@
+{{- $root := . }}
+{{- $first := true }}
+{{- range $serviceKey, $service := .Values.services }}
+{{- if $service.enabled }}
+{{- if not $first }}
+---
+{{- end }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $service.name }}
+  labels:
+    {{- include "sports-store.labels" $root | nindent 4 }}
+    app.kubernetes.io/component: {{ $service.name }}
+spec:
+  replicas: {{ default $root.Values.backendDefaults.replicas $service.replicas }}
+  selector:
+    matchLabels:
+      {{- include "sports-store.selectorLabels" $root | nindent 6 }}
+      app.kubernetes.io/component: {{ $service.name }}
+  template:
+    metadata:
+      labels:
+        {{- include "sports-store.selectorLabels" $root | nindent 8 }}
+        app.kubernetes.io/component: {{ $service.name }}
+    spec:
+      serviceAccountName: {{ include "sports-store.serviceAccountName" $root }}
+      containers:
+        - name: {{ $service.name }}
+          image: {{ printf "%s:%s" $service.image.repository $service.image.tag | quote }}
+          imagePullPolicy: {{ $root.Values.backendDefaults.imagePullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ $service.port }}
+              protocol: TCP
+          env:
+            - name: MONGO_URI
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $root.Values.existingSecret }}
+                  key: {{ $service.mongoSecretKey }}
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ $root.Values.existingSecret }}
+                  key: JWT_SECRET
+          {{- if $service.config }}
+          envFrom:
+            - configMapRef:
+                name: {{ printf "%s-config" $serviceKey }}
+          {{- end }}
+          readinessProbe:
+            httpGet:
+              path: {{ $root.Values.backendDefaults.readinessProbe.path }}
+              port: {{ $service.port }}
+            initialDelaySeconds: {{ $root.Values.backendDefaults.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ $root.Values.backendDefaults.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ $root.Values.backendDefaults.readinessProbe.timeoutSeconds }}
+            failureThreshold: {{ $root.Values.backendDefaults.readinessProbe.failureThreshold }}
+          livenessProbe:
+            httpGet:
+              path: {{ $root.Values.backendDefaults.livenessProbe.path }}
+              port: {{ $service.port }}
+            initialDelaySeconds: {{ $root.Values.backendDefaults.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ $root.Values.backendDefaults.livenessProbe.periodSeconds }}
+            timeoutSeconds: {{ $root.Values.backendDefaults.livenessProbe.timeoutSeconds }}
+            failureThreshold: {{ $root.Values.backendDefaults.livenessProbe.failureThreshold }}
+          resources:
+            {{- toYaml $root.Values.backendDefaults.resources | nindent 12 }}
+{{- $first = false }}
+{{- end }}
+{{- end }}

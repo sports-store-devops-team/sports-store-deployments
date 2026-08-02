@@ -1,0 +1,21 @@
+{{- $root := . }}
+{{- $first := true }}
+{{- range $serviceKey, $service := .Values.services }}
+{{- if and $service.enabled $service.config }}
+{{- if not $first }}
+---
+{{- end }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ printf "%s-config" $serviceKey }}
+  labels:
+    {{- include "sports-store.labels" $root | nindent 4 }}
+    app.kubernetes.io/component: {{ $service.name }}
+data:
+  {{- range $key, $value := $service.config }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+{{- $first = false }}
+{{- end }}
+{{- end }}

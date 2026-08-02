@@ -1,0 +1,12 @@
+apiVersion: v2
+name: sports-store
+description: Helm chart for the Sports Store microservices application
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+
+dependencies:
+  - name: mongodb
+    version: 19.1.22
+    repository: https://charts.bitnami.com/bitnami
+    condition: mongodb.enabled
