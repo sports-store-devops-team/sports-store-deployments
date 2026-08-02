@@ -1,0 +1,32 @@
+image:
+  registry: registry-1.docker.io
+  repository: bitnami/mongodb
+  tag: ""
+  digest: sha256:6b25f1600ac5576d7ee45c0c76bc28dbb28a61ded80ebf75baaa226a431fe57d
+  pullPolicy: IfNotPresent
+
+architecture: standalone
+replicaCount: 1
+
+updateStrategy:
+  type: Recreate
+
+auth:
+  enabled: true
+  rootUser: root
+  existingSecret: app-secrets
+
+persistence:
+  enabled: true
+  size: 1Gi
+  resourcePolicy: keep
+
+initdbScriptsConfigMap: mongo-init
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

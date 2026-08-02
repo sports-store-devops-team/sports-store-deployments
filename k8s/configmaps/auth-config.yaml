@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  name: auth-config
+  namespace: sports-store
+
+data:
+  ACCESS_TOKEN_EXPIRE_MINUTES: "60"

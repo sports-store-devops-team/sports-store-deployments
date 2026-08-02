@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+
+metadata:
+  name: cart-config
+  namespace: sports-store
+
+data:
+  CATALOG_URL: "http://catalog-service:8002"
+  HTTP_TIMEOUT_SECONDS: "5"
