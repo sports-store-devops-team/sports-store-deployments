@@ -2,6 +2,9 @@ nameOverride: ""
 fullnameOverride: ""
 existingSecret: app-secrets
 
+global:
+  applicationImageRegistry: ""
+
 serviceAccount:
   create: true
   name: ""
@@ -160,18 +163,20 @@ gateway:
     port: 80
 
 ingress:
-  enabled: true
-  className: "alb"
-  annotations:
-    kubernetes.io/ingress.class: alb
-    alb.ingress.kubernetes.io/scheme: internet-facing
-    alb.ingress.kubernetes.io/target-type: ip
-  hosts:
-    - host: ""
-      paths:
-        - path: /
-          pathType: Prefix
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts: []
   tls: []
+
+storageClass:
+  enabled: false
+  name: ""
+  provisioner: ""
+  type: ""
+  volumeBindingMode: WaitForFirstConsumer
+  reclaimPolicy: Retain
+  allowVolumeExpansion: true
 
 mongodb:
   enabled: true
@@ -198,7 +203,6 @@ mongodb:
 
   persistence:
     enabled: true
-    storageClass: "ebs-sc"
     size: 1Gi
     resourcePolicy: keep
 

@@ -50,3 +50,27 @@ minikube service gateway -n sports-store
 ```
 
 The `k8s/` tree retains the verified raw resource-per-component layout. The application Helm chart is under `helm/sports-store/`.
+
+## AWS/EKS deployment
+
+The base `values.yaml` is environment-neutral, `values-local.yaml` supplies Minikube-only overrides, and `values-aws.yaml` enables AWS behavior. Before an AWS render or deployment, replace the ECR registry placeholder and every example `<semver>-<7-char-git-hash>` image tag in `values-aws.yaml`; `latest` tags are not allowed.
+
+AWS deployment prerequisites include the Terraform-created EKS cluster, EBS CSI add-on and IRSA role, the `ebs-sc` StorageClass enabled by the AWS values, seven published ECR images, an out-of-Git `app-secrets` Secret, and AWS Load Balancer Controller. Obtain the controller role ARN with:
+
+```sh
+terraform -chdir=../sports-store-infrastructure/terraform output -raw aws_load_balancer_controller_iam_role_arn
+```
+
+Then run `scripts/install-aws-lbc.sh` with `--cluster-name`, `--region`, and `--iam-role-arn`, or the corresponding documented environment variables. Review the script before running it; this repository does not run it automatically.
+
+Validate both environments without installing a release:
+
+```sh
+helm dependency build helm/sports-store
+helm lint helm/sports-store -f helm/sports-store/values-local.yaml
+helm lint helm/sports-store -f helm/sports-store/values-aws.yaml
+helm template sports-store helm/sports-store -f helm/sports-store/values-local.yaml
+helm template sports-store helm/sports-store -f helm/sports-store/values-aws.yaml
+```
+
+AWS Ingress routes only to the ClusterIP gateway through an internet-facing ALB using IP targets. Secrets remain outside Git and must never be placed in Helm values files.

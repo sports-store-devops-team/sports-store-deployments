@@ -27,7 +27,7 @@ spec:
       serviceAccountName: {{ include "sports-store.serviceAccountName" $root }}
       containers:
         - name: {{ $service.name }}
-          image: {{ printf "%s:%s" $service.image.repository $service.image.tag | quote }}
+          image: {{ include "sports-store.image" (dict "root" $root "repository" $service.image.repository "tag" $service.image.tag) | quote }}
           imagePullPolicy: {{ $root.Values.backendDefaults.imagePullPolicy }}
           ports:
             - name: http

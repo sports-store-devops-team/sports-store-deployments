@@ -1,0 +1,14 @@
+{{- if .Values.storageClass.enabled }}
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ .Values.storageClass.name }}
+  labels:
+    {{- include "sports-store.labels" . | nindent 4 }}
+provisioner: {{ .Values.storageClass.provisioner }}
+parameters:
+  type: {{ .Values.storageClass.type }}
+volumeBindingMode: {{ .Values.storageClass.volumeBindingMode }}
+reclaimPolicy: {{ .Values.storageClass.reclaimPolicy }}
+allowVolumeExpansion: {{ .Values.storageClass.allowVolumeExpansion }}
+{{- end }}

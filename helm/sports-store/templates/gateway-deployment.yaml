@@ -21,7 +21,7 @@ spec:
       serviceAccountName: {{ include "sports-store.serviceAccountName" . }}
       containers:
         - name: gateway
-          image: {{ printf "%s:%s" .Values.gateway.image.repository .Values.gateway.image.tag | quote }}
+          image: {{ include "sports-store.image" (dict "root" . "repository" .Values.gateway.image.repository "tag" .Values.gateway.image.tag) | quote }}
           imagePullPolicy: {{ .Values.gateway.imagePullPolicy }}
           ports:
             - name: http
