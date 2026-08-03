@@ -160,10 +160,17 @@ gateway:
     port: 80
 
 ingress:
-  enabled: false
-  className: ""
-  annotations: {}
-  hosts: []
+  enabled: true
+  className: "alb"
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+  hosts:
+    - host: ""
+      paths:
+        - path: /
+          pathType: Prefix
   tls: []
 
 mongodb:
@@ -191,6 +198,7 @@ mongodb:
 
   persistence:
     enabled: true
+    storageClass: "ebs-sc"
     size: 1Gi
     resourcePolicy: keep
 
