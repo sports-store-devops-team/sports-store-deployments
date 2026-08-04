@@ -44,9 +44,9 @@ The existing Secret must provide the keys expected by the application services a
 
 `values-local.yaml` contains Minikube-specific overrides. It changes the backend, frontend, and gateway image pull policy to `Never` because the application images are loaded directly into Minikube rather than pulled from a registry. It also exposes the gateway through a `NodePort` Service. Ingress remains disabled locally.
 
-### Future `values-aws.yaml`
+### `values-aws.yaml`
 
-A future `values-aws.yaml` will contain AWS/EKS-specific overrides, such as registry-access behavior, gateway exposure, and AWS-specific Ingress configuration. Ingress will be enabled for EKS through that file; AWS annotations do not belong in the base values or templates.
+`values-aws.yaml` contains AWS/EKS overrides. It enables an ALB Ingress, keeps the gateway as `ClusterIP`, enables the `ebs-sc` StorageClass, selects `IfNotPresent`, and supplies ECR registry and immutable tag placeholders. Replace the registry placeholder and all example tags with published values following `<semver>-<7-char-git-hash>` before deployment. Never use `latest`.
 
 Values files are layered from left to right, so an environment file overrides matching settings from `values.yaml`.
 
@@ -151,7 +151,24 @@ The `mongo-init` ConfigMap supplies the initialization script used when MongoDB 
 
 ## Ingress
 
-Ingress is disabled in the default and local configurations. When enabled, it routes configured hosts and paths only to the gateway Service; frontend and backend Services are not exposed directly. The future AWS values file will enable and configure Ingress for EKS without adding AWS-specific settings to the reusable base chart.
+Ingress is disabled in the default and local configurations. The AWS values enable an internet-facing ALB with IP targets. In every environment, Ingress routes configured hosts and paths only to the gateway Service; frontend and backend Services are not exposed directly.
+
+## AWS prerequisites and validation
+
+Provision EKS and its managed EBS CSI add-on first. The AWS values create the cluster-scoped `ebs-sc` StorageClass using `ebs.csi.aws.com`, `gp3`, `WaitForFirstConsumer`, volume expansion, and a `Retain` reclaim policy. MongoDB requests that same StorageClass.
+
+Install AWS Load Balancer Controller only after Terraform has created its scoped IAM role. Obtain the role ARN with `terraform output -raw aws_load_balancer_controller_iam_role_arn`, then pass it to `scripts/install-aws-lbc.sh`. The script installs the pinned controller chart into `kube-system` and annotates its Helm-created ServiceAccount.
+
+Validate AWS rendering without installing it:
+
+```bash
+helm lint . -f values-aws.yaml
+helm template sports-store . \
+  --namespace sports-store \
+  -f values-aws.yaml \
+  > /tmp/sports-store-aws.yaml
+kubectl apply --dry-run=client -f /tmp/sports-store-aws.yaml
+```
 
 ## Secret handling
 

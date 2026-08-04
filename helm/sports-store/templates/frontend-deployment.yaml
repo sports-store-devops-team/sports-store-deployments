@@ -21,7 +21,7 @@ spec:
       serviceAccountName: {{ include "sports-store.serviceAccountName" . }}
       containers:
         - name: frontend
-          image: {{ printf "%s:%s" .Values.frontend.image.repository .Values.frontend.image.tag | quote }}
+          image: {{ include "sports-store.image" (dict "root" . "repository" .Values.frontend.image.repository "tag" .Values.frontend.image.tag) | quote }}
           imagePullPolicy: {{ .Values.frontend.imagePullPolicy }}
           ports:
             - name: http

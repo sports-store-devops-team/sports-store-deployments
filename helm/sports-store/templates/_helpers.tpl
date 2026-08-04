@@ -3,6 +3,17 @@
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
+{{/* Build an image reference with an optional global registry prefix. */}}
+{{- define "sports-store.image" -}}
+{{- $registry := trimSuffix "/" (default "" .root.Values.global.applicationImageRegistry) -}}
+{{- $repository := trimPrefix "/" .repository -}}
+{{- if and $registry (not (hasPrefix (printf "%s/" $registry) $repository)) -}}
+{{- printf "%s/%s:%s" $registry $repository .tag -}}
+{{- else -}}
+{{- printf "%s:%s" $repository .tag -}}
+{{- end -}}
+{{- end }}
+
 {{/* Create a fully qualified app name. */}}
 {{- define "sports-store.fullname" -}}
 {{- if .Values.fullnameOverride }}
