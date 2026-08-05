@@ -8,5 +8,5 @@ appVersion: "0.1.0"
 dependencies:
   - name: mongodb
     version: 19.1.22
-    repository: https://charts.bitnami.com/bitnami
+    repository: oci://registry-1.docker.io/bitnamicharts
     condition: mongodb.enabled

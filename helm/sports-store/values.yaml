@@ -26,11 +26,11 @@ backendDefaults:
     failureThreshold: 3
   resources:
     requests:
-      cpu: 100m
-      memory: 128Mi
+      cpu: 20m
+      memory: 64Mi
     limits:
-      cpu: 500m
-      memory: 256Mi
+      cpu: 150m
+      memory: 128Mi
 
 services:
   auth:
@@ -121,11 +121,11 @@ frontend:
     failureThreshold: 3
   resources:
     requests:
-      cpu: 25m
-      memory: 32Mi
-    limits:
-      cpu: 100m
+      cpu: 20m
       memory: 64Mi
+    limits:
+      cpu: 150m
+      memory: 128Mi
   service:
     type: ClusterIP
     port: 80
@@ -153,10 +153,10 @@ gateway:
     failureThreshold: 3
   resources:
     requests:
-      cpu: 50m
+      cpu: 20m
       memory: 64Mi
     limits:
-      cpu: 200m
+      cpu: 150m
       memory: 128Mi
   service:
     type: ClusterIP
@@ -208,8 +208,12 @@ mongodb:
 
   resources:
     requests:
-      cpu: 100m
-      memory: 256Mi
+      cpu: 50m
+      memory: 128Mi
     limits:
-      cpu: 500m
-      memory: 512Mi
+      cpu: 300m
+      memory: 384Mi
+  
+  extraEnvVars:
+    - name: MONGODB_EXTRA_FLAGS
+      value: "--wiredTigerCacheSizeGB=0.1"
