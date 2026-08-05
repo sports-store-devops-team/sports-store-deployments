@@ -216,4 +216,4 @@ mongodb:
   
   extraEnvVars:
     - name: MONGODB_EXTRA_FLAGS
-      value: "--wiredTigerCacheSizeGB=0.1"
+      value: "--wiredTigerCacheSizeGB=0.25"
