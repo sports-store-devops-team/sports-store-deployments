@@ -11,7 +11,7 @@ spec:
   source:
     repoURL: 'https://github.com/sports-store-devops-team/sports-store-deployments.git'
     path: helm/sports-store
-    targetRevision: main
+    targetRevision: YuvalBranch
     helm:
       valueFiles:
         - values.yaml
