@@ -236,11 +236,6 @@ prometheus:
     serviceMonitorSelector:
       matchLabels:
         observability.sports-store/enabled: "true"
-    serviceMonitorNamespaceSelector:
-      matchExpressions:
-        - key: kubernetes.io/metadata.name
-          operator: In
-          values: [monitoring, sports-store, default]
 
     ruleSelectorNilUsesHelmValues: false
     ruleSelector:
