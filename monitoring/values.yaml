@@ -176,6 +176,8 @@ prometheusOperator:
   enabled: true
   admissionWebhooks:
     enabled: false
+  tls:
+    enabled: false
   kubeletService:
     enabled: false
   kubeletEndpointsEnabled: false
