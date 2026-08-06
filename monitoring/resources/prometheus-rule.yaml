@@ -1,0 +1,62 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: sports-store-alerts
+  namespace: monitoring
+  labels:
+    observability.sports-store/enabled: "true"
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  groups:
+    - name: sports-store.availability
+      rules:
+        - alert: SportsStoreServiceUnavailable
+          expr: up{namespace="sports-store"} == 0
+          for: 3m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Sports Store metrics target is unavailable"
+            description: "Prometheus has been unable to scrape {{ $labels.job }} for more than three minutes."
+
+        - alert: SportsStoreDeploymentReplicasUnavailable
+          expr: kube_deployment_status_replicas_unavailable{namespace="sports-store"} > 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Sports Store Deployment has unavailable replicas"
+            description: "Deployment {{ $labels.deployment }} has had unavailable replicas for five minutes."
+
+        - alert: SportsStoreContainerRestarting
+          expr: |
+            sum by (namespace, pod, container) (
+              increase(kube_pod_container_status_restarts_total{namespace="sports-store"}[15m])
+            ) >= 3
+            or
+            max by (namespace, pod, container) (
+              max_over_time(kube_pod_container_status_waiting_reason{namespace="sports-store",reason="CrashLoopBackOff"}[5m])
+            ) == 1
+          for: 2m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Sports Store container is repeatedly restarting"
+            description: "Container {{ $labels.container }} in Pod {{ $labels.pod }} is restarting repeatedly or is in CrashLoopBackOff."
+
+        - alert: SportsStoreHighHttp5xxRate
+          expr: |
+            (
+              sum by (service) (rate(http_requests_total{status_code=~"5.."}[5m]))
+              /
+              clamp_min(sum by (service) (rate(http_requests_total[5m])), 0.01)
+            ) > 0.05
+            and on (service)
+            sum by (service) (rate(http_requests_total[5m])) > 0.05
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Sports Store service has a high HTTP 5xx rate"
+            description: "More than five percent of requests to {{ $labels.service }} have returned 5xx responses for five minutes."

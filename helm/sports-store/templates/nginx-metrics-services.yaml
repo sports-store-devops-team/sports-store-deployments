@@ -1,0 +1,30 @@
+{{- if .Values.monitoring.enabled }}
+{{- $root := . }}
+{{- $first := true }}
+{{- range $workload := list .Values.frontend .Values.gateway }}
+{{- if $workload.enabled }}
+{{- if not $first }}
+---
+{{- end }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $workload.name }}-metrics
+  labels:
+    {{- include "sports-store.labels" $root | nindent 4 }}
+    app.kubernetes.io/component: {{ $workload.name }}
+    observability.sports-store/metrics-port: exporter
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "sports-store.selectorLabels" $root | nindent 4 }}
+    app.kubernetes.io/component: {{ $workload.name }}
+  ports:
+    - name: metrics
+      protocol: TCP
+      port: {{ $root.Values.monitoring.nginxExporter.port }}
+      targetPort: metrics
+{{- $first = false }}
+{{- end }}
+{{- end }}
+{{- end }}

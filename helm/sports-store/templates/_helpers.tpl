@@ -28,12 +28,10 @@
 {{- end }}
 {{- end }}
 
-{{/* Create the chart name and version label. */}}
 {{- define "sports-store.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
-{{/* Common labels. */}}
 {{- define "sports-store.labels" -}}
 helm.sh/chart: {{ include "sports-store.chart" . }}
 {{ include "sports-store.selectorLabels" . }}
@@ -43,13 +41,11 @@ app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{- end }}
 
-{{/* Selector labels. */}}
 {{- define "sports-store.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "sports-store.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
-{{/* Create the name of the service account to use. */}}
 {{- define "sports-store.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
 {{- default (include "sports-store.fullname" .) .Values.serviceAccount.name }}

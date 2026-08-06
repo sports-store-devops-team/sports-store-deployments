@@ -1,0 +1,272 @@
+# Resource-efficient overrides for kube-prometheus-stack 88.1.5.
+# Prometheus and Alertmanager intentionally use emptyDir-backed storage: all
+# retained metrics, silences, and notification state are lost on Pod recreation.
+
+crds:
+  enabled: true
+
+defaultRules:
+  create: false
+
+alertmanager:
+  enabled: true
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      group_by: [alertname, namespace, service]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 12h
+      receiver: "null"
+    receivers:
+      - name: "null"
+  service:
+    type: ClusterIP
+  serviceMonitor:
+    selfMonitor: true
+    interval: 60s
+    additionalLabels:
+      observability.sports-store/enabled: "true"
+  alertmanagerSpec:
+    replicas: 1
+    retention: 24h
+    storage: {}
+    resources:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+
+kubeStateMetrics:
+  enabled: true
+
+kube-state-metrics:
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+  prometheus:
+    monitor:
+      enabled: true
+      interval: 60s
+      additionalLabels:
+        observability.sports-store/enabled: "true"
+
+nodeExporter:
+  enabled: true
+  operatingSystems:
+    linux:
+      enabled: true
+    aix:
+      enabled: false
+    darwin:
+      enabled: false
+
+prometheus-node-exporter:
+  resources:
+    requests:
+      cpu: 15m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+  prometheus:
+    monitor:
+      enabled: true
+      interval: 60s
+      additionalLabels:
+        observability.sports-store/enabled: "true"
+
+# EKS does not expose most control-plane endpoints to in-cluster scraping. The
+# useful cluster-state and host metrics above are kept; noisy/unreachable
+# control-plane targets remain disabled.
+kubeApiServer:
+  enabled: false
+kubelet:
+  enabled: false
+kubeControllerManager:
+  enabled: false
+coreDns:
+  enabled: false
+kubeDns:
+  enabled: false
+kubeEtcd:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeProxy:
+  enabled: false
+
+grafana:
+  enabled: true
+  replicas: 1
+  admin:
+    existingSecret: monitoring-grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+  defaultDashboardsEnabled: false
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+  persistence:
+    enabled: false
+  initChownData:
+    enabled: false
+  testFramework:
+    enabled: false
+  sidecar:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        cpu: 50m
+        memory: 64Mi
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: monitoring
+      resource: configmap
+      provider:
+        allowUiUpdates: false
+    datasources:
+      enabled: false
+  datasources:
+    datasources.yaml:
+      apiVersion: 1
+      datasources:
+        - name: Prometheus
+          uid: prometheus
+          type: prometheus
+          access: proxy
+          url: http://monitoring-kube-prometheus-prometheus.monitoring.svc.cluster.local:9090
+          isDefault: true
+          editable: false
+          jsonData:
+            httpMethod: POST
+            timeInterval: 60s
+        - name: Loki
+          uid: loki
+          type: loki
+          access: proxy
+          url: http://loki.monitoring.svc.cluster.local:3100
+          isDefault: false
+          editable: false
+  service:
+    type: ClusterIP
+  serviceMonitor:
+    enabled: false
+  grafana.ini:
+    analytics:
+      reporting_enabled: false
+      check_for_updates: false
+
+prometheusOperator:
+  enabled: true
+  admissionWebhooks:
+    enabled: false
+  kubeletService:
+    enabled: false
+  kubeletEndpointsEnabled: false
+  kubeletEndpointSliceEnabled: false
+  serviceMonitor:
+    selfMonitor: true
+    interval: 60s
+    additionalLabels:
+      observability.sports-store/enabled: "true"
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi
+  prometheusConfigReloader:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        cpu: 50m
+        memory: 64Mi
+
+prometheus:
+  enabled: true
+  service:
+    type: ClusterIP
+  serviceMonitor:
+    selfMonitor: true
+    interval: 60s
+    additionalLabels:
+      observability.sports-store/enabled: "true"
+  prometheusSpec:
+    replicas: 1
+    shards: 1
+    scrapeInterval: 60s
+    scrapeTimeout: 10s
+    evaluationInterval: 60s
+    retention: 24h
+    retentionSize: 900MB
+    walCompression: true
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 300m
+        memory: 512Mi
+    storageSpec:
+      emptyDir:
+        sizeLimit: 1Gi
+
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelector:
+      matchLabels:
+        observability.sports-store/enabled: "true"
+    serviceMonitorNamespaceSelector:
+      matchExpressions:
+        - key: kubernetes.io/metadata.name
+          operator: In
+          values: [monitoring, sports-store]
+
+    ruleSelectorNilUsesHelmValues: false
+    ruleSelector:
+      matchLabels:
+        observability.sports-store/enabled: "true"
+    ruleNamespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: monitoring
+
+    # No PodMonitor, Probe, or ScrapeConfig objects are part of this profile.
+    podMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelector:
+      matchLabels:
+        observability.sports-store/enabled: "true"
+    podMonitorNamespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: sports-store
+    probeSelectorNilUsesHelmValues: false
+    probeSelector:
+      matchLabels:
+        observability.sports-store/enabled: "true"
+    probeNamespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: sports-store
+    scrapeConfigSelectorNilUsesHelmValues: false
+    scrapeConfigSelector:
+      matchLabels:
+        observability.sports-store/enabled: "true"
+    scrapeConfigNamespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: sports-store

@@ -44,7 +44,6 @@ services:
     mongoSecretKey: AUTH_MONGO_URI
     config:
       ACCESS_TOKEN_EXPIRE_MINUTES: "60"
-
   catalog:
     enabled: true
     name: catalog-service
@@ -55,7 +54,6 @@ services:
     port: 8002
     mongoSecretKey: CATALOG_MONGO_URI
     config: {}
-
   cart:
     enabled: true
     name: cart-service
@@ -68,7 +66,6 @@ services:
     config:
       CATALOG_URL: http://catalog-service:8002
       HTTP_TIMEOUT_SECONDS: "5"
-
   order:
     enabled: true
     name: order-service
@@ -85,7 +82,6 @@ services:
       HTTP_TIMEOUT_SECONDS: "5"
       SHIPPING_FLAT_RATE: "5.00"
       FREE_SHIPPING_THRESHOLD: "100"
-
   payment:
     enabled: true
     name: payment-service
@@ -162,6 +158,24 @@ gateway:
     type: ClusterIP
     port: 80
 
+monitoring:
+  enabled: true
+  interval: 60s
+  serviceMonitorLabels:
+    observability.sports-store/enabled: "true"
+  nginxExporter:
+    image:
+      repository: nginx/nginx-prometheus-exporter
+      tag: 1.5.1
+    port: 9113
+    resources:
+      requests:
+        cpu: 10m
+        memory: 24Mi
+      limits:
+        cpu: 50m
+        memory: 48Mi
+
 ingress:
   enabled: false
   className: ""
@@ -183,29 +197,22 @@ mongodb:
   architecture: standalone
   replicaCount: 1
   fullnameOverride: sports-store-mongodb
-
   image:
     registry: registry-1.docker.io
     repository: bitnami/mongodb
     tag: ""
     digest: sha256:6b25f1600ac5576d7ee45c0c76bc28dbb28a61ded80ebf75baaa226a431fe57d
     pullPolicy: IfNotPresent
-
   updateStrategy:
     type: Recreate
-
   auth:
     enabled: true
     rootUser: root
     existingSecret: app-secrets
-
-  initdbScriptsConfigMap: mongo-init
-
   persistence:
     enabled: true
     size: 1Gi
     resourcePolicy: keep
-
   resources:
     requests:
       cpu: 50m
@@ -213,7 +220,6 @@ mongodb:
     limits:
       cpu: 300m
       memory: 384Mi
-  
   extraEnvVars:
     - name: MONGODB_EXTRA_FLAGS
       value: "--wiredTigerCacheSizeGB=0.25"
