@@ -12,6 +12,7 @@ metadata:
   labels:
     {{- include "sports-store.labels" $root | nindent 4 }}
     app.kubernetes.io/component: {{ $service.name }}
+    observability.sports-store/metrics-port: application
 spec:
   type: ClusterIP
   selector:

@@ -4,6 +4,8 @@ metadata:
   name: sports-store
   namespace: argocd
   annotations:
+    argocd.argoproj.io/sync-wave: "2"
+  annotations:
     argocd-image-updater.argoproj.io/image-list: frontend=324621154117.dkr.ecr.eu-central-1.amazonaws.com/sports-store-frontend,auth=324621154117.dkr.ecr.eu-central-1.amazonaws.com/sports-store-auth-service,catalog=324621154117.dkr.ecr.eu-central-1.amazonaws.com/sports-store-catalog-service,cart=324621154117.dkr.ecr.eu-central-1.amazonaws.com/sports-store-cart-service,order=324621154117.dkr.ecr.eu-central-1.amazonaws.com/sports-store-order-service,payment=324621154117.dkr.ecr.eu-central-1.amazonaws.com/sports-store-payment-service,gateway=324621154117.dkr.ecr.eu-central-1.amazonaws.com/sports-store-gateway
     argocd-image-updater.argoproj.io/write-back-method: argocd
     argocd-image-updater.argoproj.io/frontend.helm.image-name: frontend.image.repository
@@ -25,15 +27,17 @@ spec:
   source:
     repoURL: 'https://github.com/sports-store-devops-team/sports-store-deployments.git'
     path: helm/sports-store
-    targetRevision: YuvalBranch
+    targetRevision: NivBranch
     helm:
       valueFiles:
         - values.yaml
         - values-aws.yaml
   destination:
     server: 'https://kubernetes.default.svc'
-    namespace: default
+    namespace: sports-store
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

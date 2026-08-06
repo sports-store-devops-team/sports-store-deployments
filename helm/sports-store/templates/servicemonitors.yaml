@@ -1,0 +1,70 @@
+{{- if .Values.monitoring.enabled }}
+{{- $root := . }}
+{{- $first := true }}
+{{- range $serviceKey, $service := .Values.services }}
+{{- if $service.enabled }}
+{{- if not $first }}
+---
+{{- end }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ $service.name }}
+  labels:
+    {{- include "sports-store.labels" $root | nindent 4 }}
+    {{- toYaml $root.Values.monitoring.serviceMonitorLabels | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  jobLabel: app.kubernetes.io/component
+  namespaceSelector:
+    matchNames:
+      - {{ $root.Release.Namespace }}
+  selector:
+    matchLabels:
+      {{- include "sports-store.selectorLabels" $root | nindent 6 }}
+      app.kubernetes.io/component: {{ $service.name }}
+      observability.sports-store/metrics-port: application
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ $root.Values.monitoring.interval }}
+      scrapeTimeout: 10s
+{{- $first = false }}
+{{- end }}
+{{- end }}
+{{- range $workload := list .Values.frontend .Values.gateway }}
+{{- if $workload.enabled }}
+{{- if not $first }}
+---
+{{- end }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ $workload.name }}
+  labels:
+    {{- include "sports-store.labels" $root | nindent 4 }}
+    {{- toYaml $root.Values.monitoring.serviceMonitorLabels | nindent 4 }}
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  jobLabel: app.kubernetes.io/component
+  namespaceSelector:
+    matchNames:
+      - {{ $root.Release.Namespace }}
+  selector:
+    matchLabels:
+      {{- include "sports-store.selectorLabels" $root | nindent 6 }}
+      app.kubernetes.io/component: {{ $workload.name }}
+      observability.sports-store/metrics-port: exporter
+  targetLabels:
+    - app.kubernetes.io/component
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: {{ $root.Values.monitoring.interval }}
+      scrapeTimeout: 10s
+{{- $first = false }}
+{{- end }}
+{{- end }}
+{{- end }}

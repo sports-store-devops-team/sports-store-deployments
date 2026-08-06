@@ -2,6 +2,10 @@
 
 Raw Kubernetes manifests for the Sports Store application. Workloads run in the `sports-store` namespace. The gateway is the only NodePort; frontend and backend Services are internal ClusterIP Services.
 
+The complete Diet Mode metrics, alerts, dashboard, Loki/Alloy logging,
+credential workflow, resource budget, verification commands, and production
+limitations are documented in [monitoring/README.md](monitoring/README.md).
+
 ## Local Minikube setup
 
 The helper scripts resolve every sibling repository relative to their own location, so they can be run from any working directory. Start Minikube, then run:

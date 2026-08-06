@@ -1,0 +1,45 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sports-store-monitoring
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: default
+
+  # Argo CD 2.6+ multi-source application:
+  # 1. render the official Helm chart;
+  # 2. read the reviewed values file from the GitOps repository.
+  sources:
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-prometheus-stack
+      targetRevision: 88.1.5
+      helm:
+        releaseName: monitoring
+        valueFiles:
+          - $values/monitoring/values.yaml
+
+    - repoURL: https://github.com/sports-store-devops-team/sports-store-deployments.git
+      targetRevision: NivBranch
+      ref: values
+
+    # The only custom dashboard and the focused application alert rules are
+    # plain Git-managed resources. CRDs from the chart are installed first.
+    - repoURL: https://github.com/sports-store-devops-team/sports-store-deployments.git
+      targetRevision: NivBranch
+      path: monitoring/resources
+
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # The chart contains large CRDs; server-side apply avoids the client-side
+      # last-applied annotation size limit.
+      - ServerSideApply=true

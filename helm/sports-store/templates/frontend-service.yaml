@@ -2,15 +2,15 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: frontend
+  name: {{ .Values.frontend.name }}
   labels:
     {{- include "sports-store.labels" . | nindent 4 }}
-    app.kubernetes.io/component: frontend
+    app.kubernetes.io/component: {{ .Values.frontend.name }}
 spec:
   type: {{ .Values.frontend.service.type }}
   selector:
     {{- include "sports-store.selectorLabels" . | nindent 4 }}
-    app.kubernetes.io/component: frontend
+    app.kubernetes.io/component: {{ .Values.frontend.name }}
   ports:
     - name: http
       protocol: TCP

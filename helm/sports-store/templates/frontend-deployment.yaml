@@ -2,21 +2,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: frontend
+  name: {{ .Values.frontend.name }}
   labels:
     {{- include "sports-store.labels" . | nindent 4 }}
-    app.kubernetes.io/component: frontend
+    app.kubernetes.io/component: {{ .Values.frontend.name }}
 spec:
   replicas: {{ .Values.frontend.replicas }}
   selector:
     matchLabels:
       {{- include "sports-store.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: frontend
+      app.kubernetes.io/component: {{ .Values.frontend.name }}
   template:
     metadata:
       labels:
         {{- include "sports-store.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/component: frontend
+        app.kubernetes.io/component: {{ .Values.frontend.name }}
     spec:
       serviceAccountName: {{ include "sports-store.serviceAccountName" . }}
       containers:
@@ -45,4 +45,23 @@ spec:
             failureThreshold: {{ .Values.frontend.livenessProbe.failureThreshold }}
           resources:
             {{- toYaml .Values.frontend.resources | nindent 12 }}
+        {{- if .Values.monitoring.enabled }}
+        - name: nginx-exporter
+          image: {{ printf "%s:%s" .Values.monitoring.nginxExporter.image.repository .Values.monitoring.nginxExporter.image.tag | quote }}
+          args:
+            - --nginx.scrape-uri=http://127.0.0.1:8080/stub_status
+            - --web.listen-address=:{{ .Values.monitoring.nginxExporter.port }}
+          ports:
+            - name: metrics
+              containerPort: {{ .Values.monitoring.nginxExporter.port }}
+              protocol: TCP
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.monitoring.nginxExporter.resources | nindent 12 }}
+        {{- end }}
 {{- end }}
