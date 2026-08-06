@@ -240,7 +240,7 @@ prometheus:
       matchExpressions:
         - key: kubernetes.io/metadata.name
           operator: In
-          values: [monitoring, sports-store]
+          values: [monitoring, sports-store, default]
 
     ruleSelectorNilUsesHelmValues: false
     ruleSelector:
