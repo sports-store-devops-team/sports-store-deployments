@@ -2,6 +2,10 @@
 global:
   applicationImageRegistry: 324621154117.dkr.ecr.eu-central-1.amazonaws.com
 
+externalSecrets:
+  enabled: true
+  awsRegion: eu-central-1
+
 backendDefaults:
   imagePullPolicy: IfNotPresent
 

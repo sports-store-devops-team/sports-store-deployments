@@ -5,6 +5,13 @@ existingSecret: app-secrets
 global:
   applicationImageRegistry: ""
 
+externalSecrets:
+  enabled: false
+  refreshInterval: 1h
+  secretStoreName: sports-store-aws-secrets
+  remoteSecretName: sports-store/production/app
+  awsRegion: ""
+
 serviceAccount:
   create: true
   name: ""

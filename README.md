@@ -59,7 +59,19 @@ The `k8s/` tree retains the verified raw resource-per-component layout. The appl
 
 The base `values.yaml` is environment-neutral, `values-local.yaml` supplies Minikube-only overrides, and `values-aws.yaml` enables AWS behavior. Before an AWS render or deployment, replace the ECR registry placeholder and every example `<semver>-<7-char-git-hash>` image tag in `values-aws.yaml`; `latest` tags are not allowed.
 
-AWS deployment prerequisites include the Terraform-created EKS cluster, EBS CSI add-on and IRSA role, the `ebs-sc` StorageClass enabled by the AWS values, seven published ECR images, an out-of-Git `app-secrets` Secret, and AWS Load Balancer Controller. Obtain the controller role ARN with:
+AWS deployment prerequisites include the Terraform-created EKS cluster, EBS CSI add-on and IRSA role, External Secrets Operator and its IRSA role, the `sports-store/production/app` AWS Secrets Manager container, the `ebs-sc` StorageClass enabled by the AWS values, seven published ECR images, and AWS Load Balancer Controller. Terraform creates only the AWS secret container; Yuval must run the infrastructure repository's `scripts/bootstrap-application-secrets.sh` after the first apply. External Secrets Operator then creates and maintains `app-secrets` in `sports-store`.
+
+Use this setup order:
+
+```text
+Terraform apply
+-> bootstrap AWS secret values
+-> wait for ExternalSecret synchronization
+-> verify app-secrets exists
+-> verify MongoDB and application workloads
+```
+
+Obtain the controller role ARN with:
 
 ```sh
 terraform -chdir=../sports-store-infrastructure/terraform output -raw aws_load_balancer_controller_iam_role_arn
@@ -77,4 +89,16 @@ helm template sports-store helm/sports-store -f helm/sports-store/values-local.y
 helm template sports-store helm/sports-store -f helm/sports-store/values-aws.yaml
 ```
 
-AWS Ingress routes only to the ClusterIP gateway through an internet-facing ALB using IP targets. Secrets remain outside Git and must never be placed in Helm values files.
+AWS Ingress routes only to the ClusterIP gateway through an internet-facing ALB using IP targets. Verify secret synchronization without printing values:
+
+```sh
+kubectl get secretstore,externalsecret -n sports-store
+kubectl describe externalsecret app-secrets -n sports-store
+kubectl wait --for=condition=Ready externalsecret/app-secrets -n sports-store --timeout=120s
+kubectl get secret app-secrets -n sports-store -o go-template='{{range $key, $_ := .data}}{{printf "%s\n" $key}}{{end}}'
+kubectl get pods -n sports-store
+```
+
+Local development remains independent of AWS: `externalSecrets.enabled` defaults to `false`, and `scripts/create-local-secrets.sh` continues to create the local Secret. No password, JWT secret, credential-bearing URI, AWS access key, or secret JSON belongs in Git, Terraform inputs/state, Helm values, shell history, or logs.
+
+External Secrets refreshes `app-secrets`, but environment variables in running Pods change only after a restart. JWT rotation invalidates tokens once all backends restart with the new signing key. MongoDB root-password rotation is different: the initialized database retains its credential, so rotating the AWS property without changing MongoDB in a coordinated maintenance procedure breaks authentication. Normal deployments must not rotate either property automatically.

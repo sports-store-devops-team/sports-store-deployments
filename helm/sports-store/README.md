@@ -14,6 +14,7 @@ The chart deploys:
 - A MongoDB initialization ConfigMap containing the seed script
 - A shared ServiceAccount for application workloads
 - An optional Ingress that routes traffic only to the gateway
+- Optional namespaced External Secrets resources for AWS deployments
 
 Each component can be enabled or disabled through its values. Ingress is disabled by default.
 
@@ -30,15 +31,16 @@ Each component can be enabled or disabled through its values. Ingress is disable
   - `sports-store/payment-service:0.1.0`
   - `sports-store/frontend:0.1.0`
   - `sports-store/gateway:0.2.0`
-- An existing Kubernetes Secret named `app-secrets`, unless `existingSecret` and the MongoDB dependency configuration are changed together
+- An existing Kubernetes Secret named `app-secrets` for local development, unless `existingSecret` and the MongoDB dependency configuration are changed together
+- For AWS, the Terraform-installed External Secrets Operator and a populated `sports-store/production/app` AWS Secrets Manager secret
 
-The existing Secret must provide the keys expected by the application services and MongoDB dependency. Create and manage it outside Git. Never place passwords, JWT values, MongoDB connection strings, or other secret data in any values file.
+The existing Secret must provide the keys expected by the application services and MongoDB dependency. Local development creates it outside Git. On AWS, the chart's `SecretStore` and `ExternalSecret` synchronize it from AWS Secrets Manager. Never place passwords, JWT values, MongoDB connection strings, or other secret data in any values file.
 
 ## Values files
 
 ### `values.yaml`
 
-`values.yaml` contains the environment-neutral chart defaults. Application images default to `IfNotPresent`, frontend and gateway Services default to `ClusterIP`, Ingress is disabled, and MongoDB runs as a standalone instance with persistent storage.
+`values.yaml` contains the environment-neutral chart defaults. Application images default to `IfNotPresent`, frontend and gateway Services default to `ClusterIP`, Ingress is disabled, External Secrets is disabled, and MongoDB runs as a standalone instance with persistent storage.
 
 ### `values-local.yaml`
 
@@ -46,7 +48,7 @@ The existing Secret must provide the keys expected by the application services a
 
 ### `values-aws.yaml`
 
-`values-aws.yaml` contains AWS/EKS overrides. It enables an ALB Ingress, keeps the gateway as `ClusterIP`, enables the `ebs-sc` StorageClass, selects `IfNotPresent`, and supplies ECR registry and immutable tag placeholders. Replace the registry placeholder and all example tags with published values following `<semver>-<7-char-git-hash>` before deployment. Never use `latest`.
+`values-aws.yaml` contains AWS/EKS overrides. It enables a namespaced AWS Secrets Manager `SecretStore` and `ExternalSecret`, an ALB Ingress, keeps the gateway as `ClusterIP`, enables the `ebs-sc` StorageClass, selects `IfNotPresent`, and supplies ECR registry and immutable tag placeholders. Replace the registry placeholder and all example tags with published values following `<semver>-<7-char-git-hash>` before deployment. Never use `latest`.
 
 Values files are layered from left to right, so an environment file overrides matching settings from `values.yaml`.
 
@@ -155,7 +157,7 @@ Ingress is disabled in the default and local configurations. The AWS values enab
 
 ## AWS prerequisites and validation
 
-Provision EKS and its managed EBS CSI add-on first. The AWS values create the cluster-scoped `ebs-sc` StorageClass using `ebs.csi.aws.com`, `gp3`, `WaitForFirstConsumer`, volume expansion, and a `Retain` reclaim policy. MongoDB requests that same StorageClass.
+Provision EKS, its managed EBS CSI add-on, External Secrets Operator, and the AWS secret container first. Yuval then runs the infrastructure bootstrap script once to create the first AWS secret version. The AWS values create the cluster-scoped `ebs-sc` StorageClass using `ebs.csi.aws.com`, `gp3`, `WaitForFirstConsumer`, volume expansion, and a `Retain` reclaim policy. MongoDB requests that same StorageClass.
 
 Install AWS Load Balancer Controller only after Terraform has created its scoped IAM role. Obtain the role ARN with `terraform output -raw aws_load_balancer_controller_iam_role_arn`, then pass it to `scripts/install-aws-lbc.sh`. The script installs the pinned controller chart into `kube-system` and annotates its Helm-created ServiceAccount.
 
@@ -172,4 +174,15 @@ kubectl apply --dry-run=client -f /tmp/sports-store-aws.yaml
 
 ## Secret handling
 
-The chart references an existing Secret; it does not create application credentials. Secret manifests, command-line secret values, exported Secret contents, and decrypted credentials must never be committed to this repository or stored in `values.yaml`, `values-local.yaml`, or future environment values files.
+AWS Secrets Manager is the AWS source of truth. Terraform creates its metadata container but no version. With AWS values, this chart creates a `SecretStore` at Argo CD sync wave `-20` and an `ExternalSecret` at wave `-10`, before ordinary workloads at wave `0`. The operator maps `MONGODB_ROOT_PASSWORD` and `JWT_SECRET` into `app-secrets` and templates the existing seven-key contract: `mongodb-root-password`, `JWT_SECRET`, `AUTH_MONGO_URI`, `CATALOG_MONGO_URI`, `CART_MONGO_URI`, `ORDER_MONGO_URI`, and `PAYMENT_MONGO_URI`. The MongoDB password is generated from URI-safe alphanumeric characters so the five connection strings do not require escaping.
+
+Inspect synchronization without showing values:
+
+```bash
+kubectl get secretstore,externalsecret -n sports-store
+kubectl describe externalsecret app-secrets -n sports-store
+kubectl wait --for=condition=Ready externalsecret/app-secrets -n sports-store --timeout=120s
+kubectl get secret app-secrets -n sports-store -o go-template='{{range $key, $_ := .data}}{{printf "%s\n" $key}}{{end}}'
+```
+
+Secret manifests, command-line secret values, exported Secret contents, and decrypted credentials must never be committed or stored in Git, Terraform variables/state, Helm values, command history, or logs. Running Pods receive these values through environment variables, so a JWT rotation requires controlled backend restarts and invalidates older tokens. MongoDB root-password rotation additionally requires changing the credential in the initialized database; updating only AWS/Kubernetes state will break clients and is not a routine deployment operation.
