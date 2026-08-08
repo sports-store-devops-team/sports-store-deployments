@@ -194,6 +194,7 @@ storageClass:
 
 mongodb:
   enabled: true
+  initdbScriptsConfigMap: mongo-init
   architecture: standalone
   replicaCount: 1
   fullnameOverride: sports-store-mongodb
@@ -221,5 +222,5 @@ mongodb:
       cpu: 300m
       memory: 384Mi
   extraEnvVars:
-    - name: MONGODB_EXTRA_FLAGS
-      value: "--wiredTigerCacheSizeGB=0.25"
+  - name: MONGODB_EXTRA_FLAGS
+    value: "--wiredTigerCacheSizeGB=0.25"
