@@ -9,7 +9,7 @@ health, alerts, dashboards, and workload logs.
 - The five FastAPI services expose internal Prometheus metrics and write safe,
   one-line JSON events to stdout. Route labels use FastAPI route templates,
   never requested URLs or resource identifiers.
-- Frontend and gateway NGINX write minimal JSON access events. A pinned NGINX
+- Frontend NGINX writes minimal JSON access events. A pinned NGINX
   Prometheus Exporter sidecar scrapes a loopback-only `stub_status` listener.
 - ServiceMonitors select five internal HTTP Services and two dedicated
   ClusterIP exporter Services at a 60-second interval.

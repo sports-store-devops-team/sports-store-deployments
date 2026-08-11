@@ -20,7 +20,6 @@ fi
 
 images=(
   "sports-store/frontend:0.1.0"
-  "sports-store/gateway:0.2.0"
   "sports-store/auth-service:0.1.0"
   "sports-store/catalog-service:0.1.0"
   "sports-store/cart-service:0.1.0"
@@ -30,7 +29,6 @@ images=(
 
 repositories=(
   "sports-store-frontend"
-  "sports-store-gateway"
   "sports-store-auth-service"
   "sports-store-catalog-service"
   "sports-store-cart-service"

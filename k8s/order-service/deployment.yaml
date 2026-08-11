@@ -20,10 +20,20 @@ spec:
         app: order-service
 
     spec:
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: order-service
         image: sports-store/order-service:0.1.0
         imagePullPolicy: Never
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
 
         ports:
         - name: http

@@ -4,7 +4,16 @@ backendDefaults:
 frontend:
   imagePullPolicy: Never
 
-gateway:
-  imagePullPolicy: Never
-  service:
-    type: NodePort
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: ""
+      paths:
+        - {path: /api/auth, pathType: Prefix, serviceName: auth-service, servicePort: 8001}
+        - {path: /api/products, pathType: Prefix, serviceName: catalog-service, servicePort: 8002}
+        - {path: /api/internal, pathType: Prefix, serviceName: catalog-service, servicePort: 8002}
+        - {path: /api/cart, pathType: Prefix, serviceName: cart-service, servicePort: 8003}
+        - {path: /api/orders, pathType: Prefix, serviceName: order-service, servicePort: 8004}
+        - {path: /api/payments, pathType: Prefix, serviceName: payment-service, servicePort: 8005}
+        - {path: /, pathType: Prefix, serviceName: frontend, servicePort: 80}

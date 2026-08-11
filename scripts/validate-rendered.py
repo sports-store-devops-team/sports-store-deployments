@@ -1,0 +1,98 @@
+import argparse
+from pathlib import Path
+
+import yaml
+
+
+EXPECTED_ROUTES = [
+    ("/api/auth", "auth-service", 8001),
+    ("/api/products", "catalog-service", 8002),
+    ("/api/internal", "catalog-service", 8002),
+    ("/api/cart", "cart-service", 8003),
+    ("/api/orders", "order-service", 8004),
+    ("/api/payments", "payment-service", 8005),
+    ("/", "frontend", 80),
+]
+CUSTOM_KINDS = {"SecretStore", "ExternalSecret", "ServiceMonitor"}
+
+
+def load_documents(path):
+    return [doc for doc in yaml.safe_load_all(path.read_text(encoding="utf-8")) if doc]
+
+
+def route_tuple(path):
+    backend = path["backend"]["service"]
+    return path["path"], backend["name"], backend["port"]["number"]
+
+
+def validate(environment, documents):
+    ingresses = [doc for doc in documents if doc.get("kind") == "Ingress"]
+    assert len(ingresses) == 1, "exactly one application Ingress must render"
+    ingress = ingresses[0]
+    paths = ingress["spec"]["rules"][0]["http"]["paths"]
+    assert [route_tuple(path) for path in paths] == EXPECTED_ROUTES
+    assert all(path["pathType"] == "Prefix" for path in paths)
+    assert paths[-1]["path"] == "/", "frontend catch-all must remain last"
+
+    annotations = ingress.get("metadata", {}).get("annotations", {})
+    annotation_text = yaml.safe_dump(annotations).lower()
+    assert "rewrite" not in annotation_text
+    assert "remove" not in annotation_text
+    assert "method" not in annotation_text
+
+    workload_kinds = {"Deployment", "Service", "StatefulSet", "ServiceMonitor"}
+    workloads = [doc for doc in documents if doc.get("kind") in workload_kinds]
+    assert not any(doc.get("metadata", {}).get("name") == "gateway" for doc in workloads)
+    assert all(route[1] != "gateway" for route in EXPECTED_ROUTES)
+
+    namespaced = [
+        doc.get("metadata", {}).get("namespace")
+        for doc in documents
+        if doc.get("metadata", {}).get("namespace") is not None
+    ]
+    assert all(namespace == "sports-store" for namespace in namespaced)
+
+    kinds = {doc.get("kind") for doc in documents}
+    assert "ConfigMap" in kinds
+    rendered_text = yaml.safe_dump_all(documents)
+    assert "mongo-init" in rendered_text
+    assert "init-mongo.js" in rendered_text
+    assert "http://catalog-service:8002" in rendered_text
+    assert "http://cart-service:8003" in rendered_text
+    assert "http://payment-service:8005" in rendered_text
+    assert "kind: Secret\n" not in rendered_text, "plaintext Secret rendered"
+
+    external_kinds = {"SecretStore", "ExternalSecret"}
+    if environment == "aws":
+        assert ingress["spec"]["ingressClassName"] == "alb"
+        assert annotations["alb.ingress.kubernetes.io/scheme"] == "internet-facing"
+        assert annotations["alb.ingress.kubernetes.io/target-type"] == "ip"
+        assert annotations["alb.ingress.kubernetes.io/healthcheck-path"] == "/health"
+        assert external_kinds.issubset(kinds)
+    else:
+        assert ingress["spec"]["ingressClassName"] == "nginx"
+        assert external_kinds.isdisjoint(kinds)
+
+    for document in documents:
+        if document.get("kind") in CUSTOM_KINDS:
+            assert document.get("apiVersion") and document.get("spec")
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("environment", choices=["local", "aws"])
+    parser.add_argument("manifest", type=Path)
+    parser.add_argument("standard_output", type=Path)
+    args = parser.parse_args()
+
+    documents = load_documents(args.manifest)
+    validate(args.environment, documents)
+    standard = [doc for doc in documents if doc.get("kind") not in CUSTOM_KINDS]
+    args.standard_output.write_text(
+        yaml.safe_dump_all(standard, sort_keys=False), encoding="utf-8"
+    )
+    print(f"{args.environment} rendering validated ({len(documents)} resources).")
+
+
+if __name__ == "__main__":
+    main()

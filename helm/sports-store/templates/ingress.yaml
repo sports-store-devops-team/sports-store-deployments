@@ -29,9 +29,9 @@ spec:
             pathType: {{ .pathType }}
             backend:
               service:
-                name: {{ $.Values.gateway.name }}
+                name: {{ .serviceName }}
                 port:
-                  number: {{ $.Values.gateway.service.port }}
+                  number: {{ .servicePort }}
           {{- end }}
     {{- end }}
 {{- end }}

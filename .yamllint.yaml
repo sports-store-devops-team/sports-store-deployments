@@ -1,0 +1,21 @@
+extends: default
+
+rules:
+  document-start: disable
+  new-lines: disable
+  line-length:
+    max: 180
+  truthy:
+    allowed-values: ["true", "false", "on"]
+
+ignore: |
+  helm/sports-store/templates/
+  helm/sports-store/charts/
+  helm/sports-store/rendered-local/
+  helm/sports-store/rendered-aws/
+  rendered-local.yaml
+  rendered-aws.yaml
+  rendered-local-standard.yaml
+  rendered-aws-standard.yaml
+  k8s/
+  monitoring/resources/grafana-dashboard.yaml

@@ -6,4 +6,4 @@ metadata:
   namespace: sports-store
 
 data:
-  ACCESS_TOKEN_EXPIRE_MINUTES: "60"
+  AUTH_SESSION_TTL_MINUTES: "60"

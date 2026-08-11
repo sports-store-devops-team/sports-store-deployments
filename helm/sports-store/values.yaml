@@ -50,7 +50,7 @@ services:
     port: 8001
     mongoSecretKey: AUTH_MONGO_URI
     config:
-      ACCESS_TOKEN_EXPIRE_MINUTES: "60"
+      AUTH_SESSION_TTL_MINUTES: "60"
   catalog:
     enabled: true
     name: catalog-service
@@ -109,7 +109,7 @@ frontend:
     tag: 0.1.0
   imagePullPolicy: IfNotPresent
   replicas: 1
-  port: 80
+  port: 8080
   readinessProbe:
     path: /
     initialDelaySeconds: 5
@@ -118,38 +118,6 @@ frontend:
     failureThreshold: 6
   livenessProbe:
     path: /
-    initialDelaySeconds: 15
-    periodSeconds: 10
-    timeoutSeconds: 2
-    failureThreshold: 3
-  resources:
-    requests:
-      cpu: 20m
-      memory: 64Mi
-    limits:
-      cpu: 150m
-      memory: 128Mi
-  service:
-    type: ClusterIP
-    port: 80
-
-gateway:
-  enabled: true
-  name: gateway
-  image:
-    repository: sports-store/gateway
-    tag: 0.2.0
-  imagePullPolicy: IfNotPresent
-  replicas: 1
-  port: 80
-  readinessProbe:
-    path: /health
-    initialDelaySeconds: 5
-    periodSeconds: 5
-    timeoutSeconds: 2
-    failureThreshold: 6
-  livenessProbe:
-    path: /health
     initialDelaySeconds: 15
     periodSeconds: 10
     timeoutSeconds: 2
@@ -229,5 +197,5 @@ mongodb:
       cpu: 300m
       memory: 384Mi
   extraEnvVars:
-  - name: MONGODB_EXTRA_FLAGS
-    value: "--wiredTigerCacheSizeGB=0.25"
+    - name: MONGODB_EXTRA_FLAGS
+      value: "--wiredTigerCacheSizeGB=0.25"

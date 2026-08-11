@@ -19,10 +19,20 @@ spec:
         app.kubernetes.io/component: {{ .Values.frontend.name }}
     spec:
       serviceAccountName: {{ include "sports-store.serviceAccountName" . }}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: frontend
           image: {{ include "sports-store.image" (dict "root" . "repository" .Values.frontend.image.repository "tag" .Values.frontend.image.tag) | quote }}
           imagePullPolicy: {{ .Values.frontend.imagePullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
           ports:
             - name: http
               containerPort: {{ .Values.frontend.port }}
@@ -49,8 +59,14 @@ spec:
         - name: nginx-exporter
           image: {{ printf "%s:%s" .Values.monitoring.nginxExporter.image.repository .Values.monitoring.nginxExporter.image.tag | quote }}
           args:
-            - --nginx.scrape-uri=http://127.0.0.1:8080/stub_status
+            - --nginx.scrape-uri=http://127.0.0.1:8081/stub_status
             - --web.listen-address=:{{ .Values.monitoring.nginxExporter.port }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
           ports:
             - name: metrics
               containerPort: {{ .Values.monitoring.nginxExporter.port }}

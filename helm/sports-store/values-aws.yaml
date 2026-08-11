@@ -13,37 +13,29 @@ services:
   auth:
     image:
       repository: sports-store-auth-service
-      tag: 0.1.0-abcdef0 # Replace with <semver>-<7-char-git-hash>.
+      tag: 0.1.0-abcdef0  # Replace with <semver>-<7-char-git-hash>.
   catalog:
     image:
       repository: sports-store-catalog-service
-      tag: 0.1.0-abcdef0 # Replace with <semver>-<7-char-git-hash>.
+      tag: 0.1.0-abcdef0  # Replace with <semver>-<7-char-git-hash>.
   cart:
     image:
       repository: sports-store-cart-service
-      tag: 0.1.0-abcdef0 # Replace with <semver>-<7-char-git-hash>.
+      tag: 0.1.0-abcdef0  # Replace with <semver>-<7-char-git-hash>.
   order:
     image:
       repository: sports-store-order-service
-      tag: 0.1.0-abcdef0 # Replace with <semver>-<7-char-git-hash>.
+      tag: 0.1.0-abcdef0  # Replace with <semver>-<7-char-git-hash>.
   payment:
     image:
       repository: sports-store-payment-service
-      tag: 0.1.0-abcdef0 # Replace with <semver>-<7-char-git-hash>.
+      tag: 0.1.0-abcdef0  # Replace with <semver>-<7-char-git-hash>.
 
 frontend:
   image:
     repository: sports-store-frontend
-    tag: 0.1.0-abcdef0 # Replace with <semver>-<7-char-git-hash>.
+    tag: 0.1.0-abcdef0  # Replace with <semver>-<7-char-git-hash>.
   imagePullPolicy: IfNotPresent
-
-gateway:
-  image:
-    repository: sports-store-gateway
-    tag: 0.2.0-abcdef0 # Replace with <semver>-<7-char-git-hash>.
-  imagePullPolicy: IfNotPresent
-  service:
-    type: ClusterIP
 
 ingress:
   enabled: true
@@ -51,11 +43,21 @@ ingress:
   annotations:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/success-codes: "200"
   hosts:
     - host: ""
       paths:
+        - {path: /api/auth, pathType: Prefix, serviceName: auth-service, servicePort: 8001}
+        - {path: /api/products, pathType: Prefix, serviceName: catalog-service, servicePort: 8002}
+        - {path: /api/internal, pathType: Prefix, serviceName: catalog-service, servicePort: 8002}
+        - {path: /api/cart, pathType: Prefix, serviceName: cart-service, servicePort: 8003}
+        - {path: /api/orders, pathType: Prefix, serviceName: order-service, servicePort: 8004}
+        - {path: /api/payments, pathType: Prefix, serviceName: payment-service, servicePort: 8005}
         - path: /
           pathType: Prefix
+          serviceName: frontend
+          servicePort: 80
   tls: []
 
 storageClass:

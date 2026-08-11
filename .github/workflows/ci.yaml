@@ -1,0 +1,66 @@
+name: CI
+
+on:
+  workflow_dispatch: {}
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.19.0
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install YAML validators
+        run: python -m pip install PyYAML==6.0.3 yamllint==1.37.1
+      - name: Lint YAML
+        run: |
+          yamllint -c .yamllint.yaml \
+            .github helm/sports-store/Chart.yaml helm/sports-store/values.yaml \
+            helm/sports-store/values-local.yaml helm/sports-store/values-aws.yaml \
+            monitoring/values.yaml monitoring/resources/prometheus-rule.yaml
+      - name: Restore pinned chart dependencies
+        working-directory: helm/sports-store
+        run: helm dependency build
+      - name: Lint local and AWS values
+        working-directory: helm/sports-store
+        run: |
+          helm lint . -f values-local.yaml
+          helm lint . -f values-aws.yaml
+      - name: Render local and AWS manifests
+        working-directory: helm/sports-store
+        run: |
+          helm template sports-store . --namespace sports-store -f values-local.yaml > ../../rendered-local.yaml
+          helm template sports-store . --namespace sports-store -f values-aws.yaml > ../../rendered-aws.yaml
+      - name: Assert rendered behavior
+        run: |
+          python scripts/validate-rendered.py local rendered-local.yaml rendered-local-standard.yaml
+          python scripts/validate-rendered.py aws rendered-aws.yaml rendered-aws-standard.yaml
+      - name: Validate standard Kubernetes schemas
+        run: |
+          for manifest in rendered-local-standard.yaml rendered-aws-standard.yaml; do
+            docker run --rm -v "${PWD}:/work" ghcr.io/yannh/kubeconform:v0.7.0 \
+              -strict -summary "/work/${manifest}"
+          done
+      - name: Scan deployment source
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: secret,misconfig
+          severity: HIGH,CRITICAL
+          exit-code: 1

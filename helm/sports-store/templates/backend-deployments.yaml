@@ -25,10 +25,20 @@ spec:
         app.kubernetes.io/component: {{ $service.name }}
     spec:
       serviceAccountName: {{ include "sports-store.serviceAccountName" $root }}
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: {{ $service.name }}
           image: {{ include "sports-store.image" (dict "root" $root "repository" $service.image.repository "tag" $service.image.tag) | quote }}
           imagePullPolicy: {{ $root.Values.backendDefaults.imagePullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: true
           ports:
             - name: http
               containerPort: {{ $service.port }}

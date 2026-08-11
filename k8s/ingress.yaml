@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sports-store
+  namespace: sports-store
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          - {path: /api/auth, pathType: Prefix, backend: {service: {name: auth-service, port: {number: 8001}}}}
+          - {path: /api/products, pathType: Prefix, backend: {service: {name: catalog-service, port: {number: 8002}}}}
+          - {path: /api/internal, pathType: Prefix, backend: {service: {name: catalog-service, port: {number: 8002}}}}
+          - {path: /api/cart, pathType: Prefix, backend: {service: {name: cart-service, port: {number: 8003}}}}
+          - {path: /api/orders, pathType: Prefix, backend: {service: {name: order-service, port: {number: 8004}}}}
+          - {path: /api/payments, pathType: Prefix, backend: {service: {name: payment-service, port: {number: 8005}}}}
+          - {path: /, pathType: Prefix, backend: {service: {name: frontend, port: {number: 80}}}}

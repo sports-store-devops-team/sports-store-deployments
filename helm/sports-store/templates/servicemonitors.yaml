@@ -33,7 +33,7 @@ spec:
 {{- $first = false }}
 {{- end }}
 {{- end }}
-{{- range $workload := list .Values.frontend .Values.gateway }}
+{{- range $workload := list .Values.frontend }}
 {{- if $workload.enabled }}
 {{- if not $first }}
 ---
