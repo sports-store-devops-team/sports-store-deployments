@@ -1,5 +1,11 @@
 # Sports Store Helm Chart
 
+`values-aws.yaml` is account-portable. Production automation supplies
+`global.applicationImageRegistry` dynamically as
+`<active-account-id>.dkr.ecr.<region>.amazonaws.com`; infrastructure Terraform
+derives it from the verified caller identity and passes it as an Argo CD Helm
+parameter. Local Minikube values remain independent of AWS accounts.
+
 This chart deploys the five FastAPI services, frontend, MongoDB, monitoring integration, and optional External Secrets resources. It does not deploy the local-only NGINX Gateway.
 
 ## Request routing
@@ -25,7 +31,8 @@ helm dependency build
 helm lint . -f values-local.yaml
 helm lint . -f values-aws.yaml
 helm template sports-store . --namespace sports-store -f values-local.yaml
-helm template sports-store . --namespace sports-store -f values-aws.yaml
+helm template sports-store . --namespace sports-store -f values-aws.yaml \
+  --set-string global.applicationImageRegistry=<account-id>.dkr.ecr.eu-central-1.amazonaws.com
 ```
 
 CI performs those commands, structured route and secret assertions, explicit CRD checks, and strict Kubeconform validation of standard Kubernetes resources.

@@ -45,11 +45,14 @@ jobs:
         working-directory: helm/sports-store
         run: |
           helm template sports-store . --namespace sports-store -f values-local.yaml > ../../rendered-local.yaml
-          helm template sports-store . --namespace sports-store -f values-aws.yaml > ../../rendered-aws.yaml
+          helm template sports-store . --namespace sports-store -f values-aws.yaml \
+            --set-string global.applicationImageRegistry=111111111111.dkr.ecr.eu-central-1.amazonaws.com \
+            > ../../rendered-aws.yaml
       - name: Assert rendered behavior
         run: |
           python scripts/validate-rendered.py local rendered-local.yaml rendered-local-standard.yaml
-          python scripts/validate-rendered.py aws rendered-aws.yaml rendered-aws-standard.yaml
+          python scripts/validate-rendered.py aws rendered-aws.yaml rendered-aws-standard.yaml \
+            --expected-registry 111111111111.dkr.ecr.eu-central-1.amazonaws.com
       - name: Validate standard Kubernetes schemas
         run: |
           for manifest in rendered-local-standard.yaml rendered-aws-standard.yaml; do

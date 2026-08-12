@@ -25,7 +25,7 @@ def route_tuple(path):
     return path["path"], backend["name"], backend["port"]["number"]
 
 
-def validate(environment, documents):
+def validate(environment, documents, expected_registry):
     ingresses = [doc for doc in documents if doc.get("kind") == "Ingress"]
     assert len(ingresses) == 1, "exactly one application Ingress must render"
     ingress = ingresses[0]
@@ -62,14 +62,36 @@ def validate(environment, documents):
     assert "http://payment-service:8005" in rendered_text
     assert "kind: Secret\n" not in rendered_text, "plaintext Secret rendered"
 
+    application_images = [
+        container["image"]
+        for document in documents
+        if document.get("kind") == "Deployment"
+        for container in document["spec"]["template"]["spec"]["containers"]
+        if container["name"] in {
+            "auth-service",
+            "catalog-service",
+            "cart-service",
+            "order-service",
+            "payment-service",
+            "frontend",
+        }
+    ]
+    assert len(application_images) == 6
+
     external_kinds = {"SecretStore", "ExternalSecret"}
     if environment == "aws":
+        assert expected_registry, "AWS rendering requires an expected registry"
+        assert all(
+            image.startswith(f"{expected_registry}/") for image in application_images
+        )
         assert ingress["spec"]["ingressClassName"] == "alb"
         assert annotations["alb.ingress.kubernetes.io/scheme"] == "internet-facing"
         assert annotations["alb.ingress.kubernetes.io/target-type"] == "ip"
         assert annotations["alb.ingress.kubernetes.io/healthcheck-path"] == "/health"
         assert external_kinds.issubset(kinds)
     else:
+        assert expected_registry is None
+        assert all(".dkr.ecr." not in image for image in application_images)
         assert ingress["spec"]["ingressClassName"] == "nginx"
         assert external_kinds.isdisjoint(kinds)
 
@@ -83,10 +105,11 @@ def main():
     parser.add_argument("environment", choices=["local", "aws"])
     parser.add_argument("manifest", type=Path)
     parser.add_argument("standard_output", type=Path)
+    parser.add_argument("--expected-registry")
     args = parser.parse_args()
 
     documents = load_documents(args.manifest)
-    validate(args.environment, documents)
+    validate(args.environment, documents, args.expected_registry)
     standard = [doc for doc in documents if doc.get("kind") not in CUSTOM_KINDS]
     args.standard_output.write_text(
         yaml.safe_dump_all(standard, sort_keys=False), encoding="utf-8"
