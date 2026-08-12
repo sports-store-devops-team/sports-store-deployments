@@ -1,0 +1,160 @@
+crds:
+  create: false
+
+global:
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 473
+    runAsGroup: 473
+    fsGroup: 473
+    fsGroupChangePolicy: OnRootMismatch
+    seccompProfile:
+      type: RuntimeDefault
+
+alloy:
+  enableReporting: false
+  storagePath: /tmp/alloy
+  configMap:
+    create: true
+    content: |-
+      discovery.kubernetes "sports_store_pods" {
+        role = "pod"
+
+        namespaces {
+          names = ["sports-store"]
+        }
+      }
+
+      discovery.relabel "sports_store_pods" {
+        targets = discovery.kubernetes.sports_store_pods.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          target_label  = "container"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+          target_label  = "app_kubernetes_io_name"
+        }
+
+        rule {
+          source_labels = ["__meta_kubernetes_pod_label_app_kubernetes_io_component"]
+          target_label  = "app_kubernetes_io_component"
+        }
+
+        rule {
+          replacement  = "sports-store/pods"
+          target_label = "job"
+        }
+      }
+
+      loki.source.kubernetes "sports_store_pods" {
+        targets    = discovery.relabel.sports_store_pods.output
+        forward_to = [loki.write.local.receiver]
+      }
+
+      loki.source.kubernetes_events "sports_store_events" {
+        namespaces = ["sports-store"]
+        job_name   = "sports-store/events"
+        log_format = "json"
+        forward_to = [loki.write.local.receiver]
+      }
+
+      loki.write "local" {
+        endpoint {
+          url = "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+        }
+      }
+  mounts:
+    varlog: false
+    dockercontainers: false
+    extra:
+      - name: alloy-storage
+        mountPath: /tmp/alloy
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 473
+    runAsGroup: 473
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+    seccompProfile:
+      type: RuntimeDefault
+  resources:
+    requests:
+      cpu: 30m
+      memory: 80Mi
+    limits:
+      cpu: 125m
+      memory: 160Mi
+
+image:
+  tag: v1.18.0
+  digest: sha256:491b0578c04983fd54fe99b587b6fab4404dc46d0dc16677bd6b00cc1140b308
+
+controller:
+  type: deployment
+  replicas: 1
+  hostNetwork: false
+  hostPID: false
+  volumes:
+    extra:
+      - name: alloy-storage
+        emptyDir:
+          sizeLimit: 128Mi
+
+configReloader:
+  enabled: false
+
+rbac:
+  create: true
+  namespaces:
+    - sports-store
+  rules:
+    - apiGroups:
+        - ""
+      resources:
+        - pods
+      verbs:
+        - get
+        - list
+        - watch
+    - apiGroups:
+        - ""
+      resources:
+        - pods/log
+      verbs:
+        - get
+    - apiGroups:
+        - ""
+      resources:
+        - events
+      verbs:
+        - get
+        - list
+        - watch
+  clusterRules: []
+
+serviceAccount:
+  create: true
+  automountServiceAccountToken: true
+
+service:
+  enabled: false
+ingress:
+  enabled: false
+serviceMonitor:
+  enabled: false

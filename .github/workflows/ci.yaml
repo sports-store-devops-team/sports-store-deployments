@@ -32,7 +32,8 @@ jobs:
           yamllint -c .yamllint.yaml \
             .github helm/sports-store/Chart.yaml helm/sports-store/values.yaml \
             helm/sports-store/values-local.yaml helm/sports-store/values-aws.yaml \
-            monitoring/values.yaml monitoring/resources/prometheus-rule.yaml
+            monitoring/values.yaml monitoring/resources/prometheus-rule.yaml \
+            logging/loki-values.yaml logging/alloy-values.yaml
       - name: Restore pinned chart dependencies
         working-directory: helm/sports-store
         run: helm dependency build
@@ -53,14 +54,50 @@ jobs:
           python scripts/validate-rendered.py local rendered-local.yaml rendered-local-standard.yaml
           python scripts/validate-rendered.py aws rendered-aws.yaml rendered-aws-standard.yaml \
             --expected-registry 111111111111.dkr.ecr.eu-central-1.amazonaws.com
+      - name: Fetch pinned logging charts
+        run: |
+          helm repo add grafana https://grafana.github.io/helm-charts
+          helm repo update grafana
+          mkdir -p .ci-charts
+          helm pull oci://ghcr.io/grafana-community/helm-charts/loki \
+            --version 18.5.0 --untar --untardir .ci-charts
+          helm pull grafana/alloy --version 1.11.0 --untar --untardir .ci-charts
+      - name: Lint and render Loki and Alloy
+        run: |
+          helm lint .ci-charts/loki -f logging/loki-values.yaml
+          helm template loki .ci-charts/loki --namespace monitoring \
+            -f logging/loki-values.yaml > rendered-loki.yaml
+          helm lint .ci-charts/alloy -f logging/alloy-values.yaml
+          helm template alloy .ci-charts/alloy --namespace monitoring \
+            -f logging/alloy-values.yaml > rendered-alloy.yaml
+      - name: Assert logging stack behavior
+        run: |
+          python scripts/validate-logging.py loki rendered-loki.yaml \
+            --loki-config rendered-loki-config.yaml
+          python scripts/validate-logging.py alloy rendered-alloy.yaml \
+            --alloy-config rendered-alloy-config.alloy \
+            --grafana-values monitoring/values.yaml \
+            --dashboard monitoring/resources/grafana-dashboard.yaml
+      - name: Validate Loki configuration
+        run: |
+          docker run --rm -v "${PWD}:/work:ro" \
+            docker.io/grafana/loki@sha256:70b9f699fc9bb868b62f1cfd4f787dfa50242f1fd92e6089787d5d7daea75fe8 \
+            -verify-config=true -config.file=/work/rendered-loki-config.yaml
+      - name: Validate Alloy configuration
+        run: |
+          docker run --rm -v "${PWD}:/work:ro" \
+            docker.io/grafana/alloy@sha256:491b0578c04983fd54fe99b587b6fab4404dc46d0dc16677bd6b00cc1140b308 \
+            validate /work/rendered-alloy-config.alloy
       - name: Validate standard Kubernetes schemas
         run: |
-          for manifest in rendered-local-standard.yaml rendered-aws-standard.yaml; do
+          for manifest in \
+            rendered-local-standard.yaml rendered-aws-standard.yaml \
+            rendered-loki.yaml rendered-alloy.yaml; do
             docker run --rm -v "${PWD}:/work" ghcr.io/yannh/kubeconform:v0.7.0 \
               -strict -summary "/work/${manifest}"
           done
       - name: Scan deployment source
-        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8 # v0.36.0
+        uses: aquasecurity/trivy-action@a9c7b0f06e461e9d4b4d1711f154ee024b8d7ab8  # v0.36.0
         with:
           scan-type: fs
           scan-ref: .

@@ -106,7 +106,7 @@ data:
           "gridPos": {"h": 8, "w": 24, "x": 0, "y": 24},
           "id": 9,
           "options": {"dedupStrategy": "none", "enableLogDetails": true, "prettifyLogMessage": true, "showCommonLabels": false, "showLabels": false, "showTime": true, "sortOrder": "Descending", "wrapLogMessage": true},
-          "targets": [{"expr": "{namespace=\"sports-store\"}", "queryType": "range", "refId": "A"}],
+          "targets": [{"expr": "{job=\"sports-store/pods\"}", "queryType": "range", "refId": "A"}],
           "title": "Recent Sports Store logs",
           "type": "logs"
         }

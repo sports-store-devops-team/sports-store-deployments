@@ -15,9 +15,11 @@ health, alerts, dashboards, and workload logs.
   ClusterIP exporter Services at a 60-second interval.
 - kube-prometheus-stack 88.1.5 provides Prometheus, Alertmanager, Grafana, the
   Prometheus Operator, kube-state-metrics, and node-exporter.
-- Loki 18.5.0 stores logs in one monolithic replica. Alloy 1.11.0 uses one
-  Deployment and the Kubernetes logs API to collect only `sports-store` Pod
-  logs and events. It cannot read Kubernetes Secrets under its scoped RBAC.
+- The official Grafana Community Loki chart 18.5.0 (Loki 3.7.3) stores logs
+  in one monolithic replica. The official Grafana Alloy chart 1.11.0 (Alloy
+  1.18.0) uses one Deployment and the Kubernetes logs API to collect only
+  `sports-store` Pod logs and events. It cannot read Kubernetes Secrets under
+  its scoped RBAC.
 - EKS `api`, `audit`, and `authenticator` logs go to CloudWatch for seven days.
   These control-plane records complement Loki workload logs; they do not
   duplicate or replace them.
@@ -25,7 +27,9 @@ health, alerts, dashboards, and workload logs.
 ## Diet Mode resource budget
 
 Requests are the scheduling budget; limits are safety ceilings. Config
-reloaders and the Grafana dashboard sidecar are included below.
+reloaders and the Grafana dashboard sidecar are included below. Alloy's
+config-reloader is disabled: Helm puts a config checksum on the Pod template,
+so GitOps changes still trigger a rollout without a permanent sidecar.
 
 | Component | Replicas | CPU request / limit | Memory request / limit |
 |---|---:|---:|---:|
@@ -35,7 +39,7 @@ reloaders and the Grafana dashboard sidecar are included below.
 | Alertmanager plus config reloader | 1 | 35m / 150m | 96Mi / 192Mi |
 | kube-state-metrics | 1 | 25m / 100m | 64Mi / 128Mi |
 | Loki monolithic | 1 | 100m / 300m | 256Mi / 512Mi |
-| Alloy plus config reloader | 1 | 30m / 125m | 80Mi / 160Mi |
+| Alloy | 1 | 30m / 125m | 80Mi / 160Mi |
 | NGINX exporters | 2 | 20m / 100m | 48Mi / 96Mi |
 | node-exporter | per node | 15m / 100m | 32Mi / 64Mi |
 
@@ -44,13 +48,27 @@ and 32Mi memory per Linux node. At the Terraform configuration's six-node
 desired capacity, that is approximately 495m CPU and 1,248Mi (1.22Gi) memory.
 The corresponding limits are about 2,075m CPU and 2,496Mi (2.44Gi) memory.
 
+The rendered logging inventory used for later node sizing is:
+
+| Component | Workload kind | Replicas | Containers per Pod | CPU request / limit | Memory request / limit | Storage |
+|---|---|---:|---:|---:|---:|---|
+| Loki monolithic | StatefulSet | 1 | 1 | 100m / 300m | 256Mi / 512Mi | 2Gi bounded `emptyDir` at `/var/loki` |
+| Alloy | Deployment | 1 | 1 | 30m / 125m | 80Mi / 160Mi | 128Mi bounded `emptyDir` at `/tmp/alloy` |
+
+Loki also renders the stable `loki` ClusterIP query/write Service and two
+headless chart-internal Services, `loki-headless` for the StatefulSet and
+`loki-memberlist` for Loki's internal ring. They expose nothing outside the
+cluster and create no additional Pods. Alloy renders no Service.
+
 Diet Mode disables built-in dashboards and rules, control-plane scrapes that
 are unavailable on EKS, Loki caches/gateway/canary, distributed Loki
 components, and all persistence for the observability stack. Prometheus keeps
 24 hours up to 900MB in a 1Gi `emptyDir`; Loki keeps 24 hours in a 2Gi
-`emptyDir`; Alertmanager also uses ephemeral storage. **Pod recreation loses
-metrics, logs, silences, and notification state.** MongoDB persistence is
-unrelated and remains controlled by the application chart.
+`emptyDir`; Alertmanager also uses ephemeral storage. **Pod recreation can
+lose metrics, logs, silences, and notification state; cluster destruction
+loses all of them.** This intentional cost tradeoff is not highly available or
+production-durable. MongoDB persistence is unrelated and remains controlled by
+the application chart.
 
 ## GitOps applications and order
 
@@ -58,11 +76,12 @@ All Applications use the existing `default` AppProject because no scoped
 Sports Store AppProject exists in this repository. The intended order is:
 
 1. Create `monitoring-grafana-admin` outside Git in `monitoring`.
-2. Reconcile `sports-store-monitoring` so Prometheus Operator CRDs exist.
-3. Reconcile `sports-store-loki`.
-4. Reconcile `sports-store-alloy` after Loki is ready.
-5. Reconcile `sports-store`; its ServiceMonitors carry sync wave `1` and the
-   Application carries wave `2` for an app-of-apps bootstrap.
+2. Reconcile `sports-store-monitoring` at sync wave `0` so the namespace,
+   Grafana, and Prometheus Operator CRDs exist.
+3. Reconcile `sports-store-loki` at wave `1`.
+4. Reconcile `sports-store-alloy` at wave `2`; delivery retries are safe while
+   Loki finishes readiness.
+5. Reconcile `sports-store` at wave `3`.
 
 The monitoring Application renders the official chart, reads
 `monitoring/values.yaml`, and applies `monitoring/resources`. Loki and Alloy
@@ -158,8 +177,29 @@ In Grafana, select **Explore**, choose the `Loki` datasource, and query:
 ```
 
 Events use `job="sports-store/events"`; container logs use
-`job="sports-store/pods"`. Alloy collects stdout only and does not read Secret
-objects, request bodies, or application data stores.
+`job="sports-store/pods"`. Useful focused queries are:
+
+```logql
+{job="sports-store/pods"}
+{job="sports-store/events"}
+{job="sports-store/pods", app_kubernetes_io_component="order-service"} | json
+```
+
+Pod streams carry only the low-cardinality labels `namespace`, `pod`,
+`container`, `app_kubernetes_io_name`, `app_kubernetes_io_component`, and
+`job`. Event streams carry Alloy's documented `namespace`, `job`, and
+`instance` labels. Kubernetes labels containing dots and slashes are converted
+to valid Loki label names with underscores. JSON log lines remain unchanged as
+content and can be parsed at query time with `| json`; no request IDs, user
+IDs, URLs, order IDs, timestamps, or message content become labels.
+
+The Alloy ServiceAccount is in `monitoring`. Its only binding is a Role in
+`sports-store`: `pods` and `events` allow `get`, `list`, and `watch`, while
+`pods/log` allows only `get`. It has no ClusterRole, mutation verb, or
+permission for Secrets, ConfigMaps, Namespaces, Nodes, or other namespaces.
+Alloy collects container stdout/stderr and event records through the Kubernetes
+API; it has no host mount, privileged mode, host network/PID, application file
+access, or data store access.
 
 ## Local validation
 
@@ -174,6 +214,24 @@ helm template monitoring prometheus-community/kube-prometheus-stack --version 88
 helm template loki oci://ghcr.io/grafana-community/helm-charts/loki --version 18.5.0 -n monitoring -f logging/loki-values.yaml
 helm template alloy grafana/alloy --version 1.11.0 -n monitoring -f logging/alloy-values.yaml
 ```
+
+Validate the extracted Alloy configuration with the chart's exact app image:
+
+```bash
+docker run --rm -v "$PWD:/work:ro" \
+  docker.io/grafana/alloy@sha256:491b0578c04983fd54fe99b587b6fab4404dc46d0dc16677bd6b00cc1140b308 \
+  validate /work/rendered-alloy-config.alloy
+```
+
+Loki's chart-selected 3.7.3 image is likewise pinned to manifest-list digest
+`sha256:70b9f699fc9bb868b62f1cfd4f787dfa50242f1fd92e6089787d5d7daea75fe8`;
+CI runs its `-verify-config=true` check against the rendered config.
+
+If Loki is not ready, inspect only status and recent logs, then verify the 2Gi
+`emptyDir` has not filled. If Alloy reports delivery failures, verify
+`loki.monitoring.svc.cluster.local`, the Loki `/ready` endpoint, Alloy's scoped
+Role, and that `sports-store` Pods exist. Alloy retries temporary connection
+failures; do not broaden RBAC or add host mounts to troubleshoot.
 
 ## Production limitations
 
