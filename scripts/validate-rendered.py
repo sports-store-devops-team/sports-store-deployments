@@ -4,15 +4,15 @@ from pathlib import Path
 import yaml
 
 
-EXPECTED_ROUTES = [
+API_ROUTES = [
     ("/api/auth", "auth-service", 8001),
     ("/api/products", "catalog-service", 8002),
     ("/api/internal", "catalog-service", 8002),
     ("/api/cart", "cart-service", 8003),
     ("/api/orders", "order-service", 8004),
     ("/api/payments", "payment-service", 8005),
-    ("/", "frontend", 80),
 ]
+LOCAL_ROUTES = [*API_ROUTES, ("/", "frontend", 80)]
 CUSTOM_KINDS = {"SecretStore", "ExternalSecret", "ServiceMonitor"}
 
 
@@ -30,9 +30,13 @@ def validate(environment, documents, expected_registry):
     assert len(ingresses) == 1, "exactly one application Ingress must render"
     ingress = ingresses[0]
     paths = ingress["spec"]["rules"][0]["http"]["paths"]
-    assert [route_tuple(path) for path in paths] == EXPECTED_ROUTES
+    expected_routes = API_ROUTES if environment == "aws" else LOCAL_ROUTES
+    assert [route_tuple(path) for path in paths] == expected_routes
     assert all(path["pathType"] == "Prefix" for path in paths)
-    assert paths[-1]["path"] == "/", "frontend catch-all must remain last"
+    if environment == "aws":
+        assert all(path["path"] != "/" for path in paths)
+    else:
+        assert paths[-1]["path"] == "/", "local frontend catch-all must remain last"
 
     annotations = ingress.get("metadata", {}).get("annotations", {})
     annotation_text = yaml.safe_dump(annotations).lower()
@@ -43,7 +47,7 @@ def validate(environment, documents, expected_registry):
     workload_kinds = {"Deployment", "Service", "StatefulSet", "ServiceMonitor"}
     workloads = [doc for doc in documents if doc.get("kind") in workload_kinds]
     assert not any(doc.get("metadata", {}).get("name") == "gateway" for doc in workloads)
-    assert all(route[1] != "gateway" for route in EXPECTED_ROUTES)
+    assert all(route[1] != "gateway" for route in expected_routes)
 
     namespaced = [
         doc.get("metadata", {}).get("namespace")
@@ -76,7 +80,7 @@ def validate(environment, documents, expected_registry):
             "frontend",
         }
     ]
-    assert len(application_images) == 6
+    assert len(application_images) == (5 if environment == "aws" else 6)
 
     external_kinds = {"SecretStore", "ExternalSecret"}
     if environment == "aws":
@@ -89,11 +93,39 @@ def validate(environment, documents, expected_registry):
         assert annotations["alb.ingress.kubernetes.io/target-type"] == "ip"
         assert annotations["alb.ingress.kubernetes.io/healthcheck-path"] == "/health"
         assert external_kinds.issubset(kinds)
+        frontend_resources = [
+            doc
+            for doc in documents
+            if doc.get("metadata", {}).get("name") == "frontend"
+            and doc.get("kind") in {"Deployment", "Service", "ServiceMonitor"}
+        ]
+        assert not frontend_resources, "AWS must not render frontend workloads"
     else:
         assert expected_registry is None
         assert all(".dkr.ecr." not in image for image in application_images)
         assert ingress["spec"]["ingressClassName"] == "nginx"
         assert external_kinds.isdisjoint(kinds)
+        local_frontend_kinds = {
+            doc["kind"]
+            for doc in documents
+            if doc.get("metadata", {}).get("name") == "frontend"
+        }
+        assert {"Deployment", "Service", "ServiceMonitor"}.issubset(
+            local_frontend_kinds
+        ), "local rendering must retain the complete frontend workload"
+        frontend_deployment = next(
+            doc
+            for doc in documents
+            if doc.get("kind") == "Deployment"
+            and doc.get("metadata", {}).get("name") == "frontend"
+        )
+        frontend_containers = frontend_deployment["spec"]["template"]["spec"][
+            "containers"
+        ]
+        assert {container["name"] for container in frontend_containers} == {
+            "frontend",
+            "nginx-exporter",
+        }
 
     for document in documents:
         if document.get("kind") in CUSTOM_KINDS:

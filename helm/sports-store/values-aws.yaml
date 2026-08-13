@@ -28,10 +28,7 @@ services:
       tag: 0.1.0-abcdef0  # Replace with <semver>-<7-char-git-hash>.
 
 frontend:
-  image:
-    repository: sports-store-frontend
-    tag: 0.1.0-abcdef0  # Replace with <semver>-<7-char-git-hash>.
-  imagePullPolicy: IfNotPresent
+  enabled: false
 
 ingress:
   enabled: true
@@ -50,10 +47,6 @@ ingress:
         - {path: /api/cart, pathType: Prefix, serviceName: cart-service, servicePort: 8003}
         - {path: /api/orders, pathType: Prefix, serviceName: order-service, servicePort: 8004}
         - {path: /api/payments, pathType: Prefix, serviceName: payment-service, servicePort: 8005}
-        - path: /
-          pathType: Prefix
-          serviceName: frontend
-          servicePort: 80
   tls: []
 
 storageClass:

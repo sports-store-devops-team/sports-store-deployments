@@ -4,9 +4,11 @@ GitOps deployment configuration for namespace `sports-store`.
 
 ## Production AWS flow
 
-`User -> CloudFront -> ALB -> Kubernetes Ingress -> frontend or FastAPI Service -> Pod`
+`User -> CloudFront -> private S3 (frontend)`
 
-CloudFront keeps the ALB origin, HTTPS viewer redirect, HTTP origin protocol, disabled caching, all viewer query strings/cookies/authorization/CORS headers, and all application methods. The ALB remains directly reachable. The local-only Gateway is absent from Helm, AWS image values, monitoring targets, and the production request path.
+`User -> CloudFront /api/* -> ALB -> Kubernetes Ingress -> FastAPI Service -> Pod`
+
+S3 is the production frontend source origin, with direct public access blocked. Only Vite content-hashed `/assets/*` receive long-lived caching. Extensionless SPA routes are rewritten to `index.html`; API responses remain uncached and preserve query strings, cookies, authorization, CORS headers, and required methods. The ALB remains directly reachable only for API troubleshooting. The AWS frontend Pod, Service, metrics sidecar, ServiceMonitor, and root Ingress route are intentionally disabled.
 
 ## Local flows
 
@@ -22,7 +24,8 @@ Minikube uses the NGINX Ingress addon with the same direct path-to-Service mappi
 | `/api/cart` | `cart-service:8003` |
 | `/api/orders` | `order-service:8004` |
 | `/api/payments` | `payment-service:8005` |
-| `/` | `frontend:80` |
+
+The six rows above are the complete AWS ALB route set. Local and Minikube values still add `/ -> frontend:80`; the frontend remains containerized for local development and CI validation.
 
 No route rewrites the URI. Enable the Minikube Ingress addon before using `values-local.yaml`:
 
